@@ -1,5 +1,6 @@
 use crate::aircraft_json::AircraftJson;
 use crate::configuration::Configuration;
+use crate::stats_json::StatsJson;
 
 use log::info;
 
@@ -48,12 +49,30 @@ impl DumpWatcher {
         info!("Watching dump{} at {}", self.frequency, self.base_uri);
 
         let aircraft_url = format!("{}/data/{}", self.base_uri, "aircraft.json");
-        let aircraft_json =
-            AircraftJson::new(self.client.clone(), self.frequency, aircraft_url, self.aircraft_interval);
+        let aircraft_json = AircraftJson::new(
+            self.client.clone(),
+            self.frequency,
+            aircraft_url,
+            self.aircraft_interval,
+        );
 
         tokio::spawn(async move {
             aircraft_json.run().await;
         });
+
+        if self.frequency == 1090 {
+            let stats_url = format!("{}/data/{}", self.base_uri, "stats.json");
+            let stats_json = StatsJson::new(
+                self.client.clone(),
+                self.frequency,
+                stats_url,
+                self.stats_interval,
+            );
+
+            tokio::spawn(async move {
+                stats_json.run().await;
+            });
+        }
     }
 
     pub async fn start(self) {

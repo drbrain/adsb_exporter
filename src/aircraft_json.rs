@@ -20,19 +20,19 @@ use std::time::Duration;
 use tokio::time::sleep;
 
 lazy_static! {
-    pub static ref AIRCRAFT_RECENT_OBSERVED: GaugeVec = register_gauge_vec!(
+    static ref AIRCRAFT_RECENT_OBSERVED: GaugeVec = register_gauge_vec!(
         "adsb_aircraft_recent_observed_total",
         "Number of aircraft recently observed",
         &[&"frequency"],
     )
     .unwrap();
-    pub static ref AIRCRAFT_RECENT_POSITIONS: GaugeVec = register_gauge_vec!(
+    static ref AIRCRAFT_RECENT_POSITIONS: GaugeVec = register_gauge_vec!(
         "adsb_aircraft_recent_positions_total",
         "Number of aircraft recently observed with a position",
         &[&"frequency"],
     )
     .unwrap();
-    pub static ref AIRCRAFT_RECENT_MLAT: GaugeVec = register_gauge_vec!(
+    static ref AIRCRAFT_RECENT_MLAT: GaugeVec = register_gauge_vec!(
         "adsb_aircraft_recent_mlat_total",
         "Number of aircraft recently observed with a position determined by multilateration",
         &[&"frequency"],
