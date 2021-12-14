@@ -57,6 +57,12 @@ async fn main() -> Result<()> {
             .await;
     };
 
+    if let Some(base_uri) = configuration.dump978_url() {
+        DumpWatcher::new(&configuration, 978, base_uri)
+            .start()
+            .await;
+    };
+
     let (error_tx, error_rx) = mpsc::channel(1);
 
     ADSBExporter::new(configuration.bind_address())?
