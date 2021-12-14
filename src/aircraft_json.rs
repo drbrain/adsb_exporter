@@ -138,6 +138,9 @@ impl AircraftJson {
             })
             .count();
 
+        let lat = json!("lat");
+        let empty_vec = vec![];
+
         let mlat = aircrafts
             .iter()
             .filter(|a| {
@@ -146,10 +149,11 @@ impl AircraftJson {
                     .as_f64()
                     .unwrap_or(f64::INFINITY)
                     < 60.0
-                    && contains(
-                        a.get("mlat").unwrap_or(&json!([])).as_array().unwrap(),
-                        "lat".to_string(),
-                    )
+                    && a.get("mlat")
+                        .unwrap_or(&json!([]))
+                        .as_array()
+                        .unwrap_or(&empty_vec)
+                        .contains(&lat)
             })
             .count();
 
@@ -168,9 +172,4 @@ impl AircraftJson {
 
         Ok(())
     }
-}
-
-fn contains(vec: &Vec<Value>, target: String) -> bool {
-    vec.iter()
-        .any(|v| v.as_str().unwrap_or(&"".to_string()) == target)
 }
