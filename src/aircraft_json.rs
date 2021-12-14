@@ -1,6 +1,4 @@
-use crate::DURATIONS;
-use crate::ERRORS;
-use crate::REQUESTS;
+use crate::fetch::fetch;
 
 use anyhow::Context;
 use anyhow::Result;
@@ -61,46 +59,9 @@ impl AircraftJson {
         }
     }
 
-    async fn fetch(&self) -> Option<Value> {
-        debug!("Fetching {}", self.url);
-        REQUESTS.with_label_values(&[&self.url]).inc();
-        let timer = DURATIONS.with_label_values(&[&self.url]).start_timer();
-
-        let response = self.client.get(&self.url).send().await;
-
-        timer.observe_duration();
-
-        let response = match response {
-            Ok(r) => r,
-            Err(e) => {
-                debug!("request error: {:?}", e);
-                ERRORS.with_label_values(&[&self.url, "request"]).inc();
-                return None;
-            }
-        };
-
-        let body = match response.text().await {
-            Ok(t) => t,
-            Err(e) => {
-                debug!("Response body error from {}: {:?}", self.url, e);
-                ERRORS.with_label_values(&[&self.url, "text"]).inc();
-                return None;
-            }
-        };
-
-        match serde_json::from_str(&body) {
-            Ok(j) => Some(j),
-            Err(e) => {
-                debug!("JSON parsing error from {}: {:?}", self.url, e);
-                ERRORS.with_label_values(&[&self.url, "json"]).inc();
-                None
-            }
-        }
-    }
-
     pub async fn run(&self) {
         loop {
-            if let Some(data) = self.fetch().await {
+            if let Some(data) = fetch(&self.client, &self.url).await {
                 match self.update_aircraft(data) {
                     Ok(_) => (),
                     Err(e) => {
