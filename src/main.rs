@@ -1,4 +1,5 @@
 mod adsb_exporter;
+mod aircraft_json;
 mod configuration;
 mod dump1090_watcher;
 
