@@ -1,14 +1,14 @@
 mod adsb_exporter;
 mod aircraft_json;
 mod configuration;
-mod dump1090_watcher;
+mod dump_watcher;
 
 use anyhow::anyhow;
 use anyhow::Result;
 
 use adsb_exporter::ADSBExporter;
 use configuration::Configuration;
-use dump1090_watcher::Dump1090Watcher;
+use dump_watcher::DumpWatcher;
 
 use env_logger::Builder;
 use env_logger::Env;
@@ -51,11 +51,13 @@ async fn main() -> Result<()> {
 
     let configuration = Configuration::load_from_next_arg();
 
-    let (error_tx, error_rx) = mpsc::channel(1);
+    if let Some(base_uri) = configuration.dump1090_url() {
+        DumpWatcher::new(&configuration, 1090, base_uri)
+            .start()
+            .await;
+    };
 
-    if let Some(watcher) = Dump1090Watcher::new(&configuration) {
-        watcher.start().await;
-    }
+    let (error_tx, error_rx) = mpsc::channel(1);
 
     ADSBExporter::new(configuration.bind_address())?
         .start(error_tx.clone())

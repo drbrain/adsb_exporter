@@ -25,34 +25,38 @@ lazy_static! {
     pub static ref AIRCRAFT_RECENT_OBSERVED: GaugeVec = register_gauge_vec!(
         "adsb_aircraft_recent_observed_total",
         "Number of aircraft recently observed",
-        &[],
+        &[&"frequency"],
     )
     .unwrap();
     pub static ref AIRCRAFT_RECENT_POSITIONS: GaugeVec = register_gauge_vec!(
         "adsb_aircraft_recent_positions_total",
         "Number of aircraft recently observed with a position",
-        &[],
+        &[&"frequency"],
     )
     .unwrap();
     pub static ref AIRCRAFT_RECENT_MLAT: GaugeVec = register_gauge_vec!(
         "adsb_aircraft_recent_mlat_total",
         "Number of aircraft recently observed with a position determined by multilateration",
-        &[],
+        &[&"frequency"],
     )
     .unwrap();
 }
 
 pub struct AircraftJson {
     client: Client,
+    frequency: String,
     url: String,
     interval: Duration,
 }
 
 impl AircraftJson {
-    pub fn new(client: Client, url: String, interval: Duration) -> AircraftJson {
+    pub fn new(client: Client, frequency: u32, url: String, interval: Duration) -> AircraftJson {
+        let frequency = frequency.to_string();
+
         AircraftJson {
-            url,
             client,
+            frequency,
+            url,
             interval,
         }
     }
@@ -158,12 +162,14 @@ impl AircraftJson {
             .count();
 
         AIRCRAFT_RECENT_OBSERVED
-            .with_label_values(&[])
+            .with_label_values(&[&self.frequency])
             .set(observed as f64);
         AIRCRAFT_RECENT_POSITIONS
-            .with_label_values(&[])
+            .with_label_values(&[&self.frequency])
             .set(positions as f64);
-        AIRCRAFT_RECENT_MLAT.with_label_values(&[]).set(mlat as f64);
+        AIRCRAFT_RECENT_MLAT
+            .with_label_values(&[&self.frequency])
+            .set(mlat as f64);
 
         debug!(
             "aircraft observed: {}, position: {} mlat: {}",
