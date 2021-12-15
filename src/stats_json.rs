@@ -20,14 +20,20 @@ use std::time::Duration;
 
 use tokio::time::sleep;
 
+macro_rules! update_counter {
+    ( $metric:ident, $labels:expr, $value:ident, $conversion:ident ) => {
+        if let Some(value) = $value.$conversion() {
+            let increment = value - $metric.with_label_values($labels).get();
+
+            $metric.with_label_values($labels).inc_by(increment);
+        }
+    };
+}
+
 macro_rules! set_counter {
     ( $metric:ident, $labels:expr, $source:ident, $field:literal, $conversion:ident ) => {
         if let Some(value) = $source.get($field) {
-            if let Some(value) = value.$conversion() {
-                let increment = value - $metric.with_label_values($labels).get();
-
-                $metric.with_label_values($labels).inc_by(increment);
-            }
+            update_counter!($metric, $labels, value, $conversion);
         }
     };
 }
@@ -109,6 +115,18 @@ lazy_static! {
         &[&"frequency", "corrections"],
     )
     .unwrap();
+    static ref MESSAGES: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_messages_total",
+        "Number of messages received from any source",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref MESSAGES_BY_DF: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_messages_by_df_total",
+        "Number of messages received per downlink format",
+        &[&"frequency", "downlink_format"],
+    )
+    .unwrap();
 }
 
 pub struct StatsJson {
@@ -153,6 +171,26 @@ impl StatsJson {
     fn update_stats(&self, data: Value) -> Result<()> {
         let total = data.get("total").context("missing total data")?;
 
+        // .total
+        set_counter!(MESSAGES, &[&self.frequency], total, "messages", as_u64);
+
+        if let Some(messages_by_df) = total.get("messages_by_df") {
+            if let Some(messages_by_df) = messages_by_df.as_array() {
+                messages_by_df
+                    .iter()
+                    .enumerate()
+                    .for_each(|(format, count)| {
+                        update_counter!(
+                            MESSAGES_BY_DF,
+                            &[&self.frequency, &format.to_string()],
+                            count,
+                            as_u64
+                        );
+                    });
+            }
+        }
+
+        // .total.local
         let local = total
             .get("local")
             .context("Missing local data in \"total\" object")?;
