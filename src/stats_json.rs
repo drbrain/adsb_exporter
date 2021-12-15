@@ -7,8 +7,10 @@ use lazy_static::lazy_static;
 
 use log::debug;
 
+use prometheus::register_counter_vec;
 use prometheus::register_gauge_vec;
 use prometheus::register_int_counter_vec;
+use prometheus::CounterVec;
 use prometheus::GaugeVec;
 use prometheus::IntCounterVec;
 
@@ -49,72 +51,95 @@ macro_rules! set_gauge {
 }
 
 lazy_static! {
+    // cpu
+    static ref CPU_DEMOD: CounterVec = register_counter_vec!(
+        "adsb_stats_cpu_demodulation_seconds_total",
+        "Number CPU seconds spent demodulation and decoding SDR data",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref CPU_READER: CounterVec = register_counter_vec!(
+        "adsb_stats_cpu_reader_seconds_total",
+        "Number CPU seconds spent reading SDR sample data",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref CPU_BACKGROUND: CounterVec = register_counter_vec!(
+        "adsb_stats_cpu_background_seconds_total",
+        "Number CPU seconds spent on network IO and periodic tasks",
+        &[&"frequency"],
+    )
+    .unwrap();
+
+    // local
     static ref LOCAL_SAMPLES_PROCESSED: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_local_samples_processed_total",
-        "Number of samples processed",
+        "Number of local samples processed",
         &[&"frequency"],
     )
     .unwrap();
     static ref LOCAL_SAMPLES_DROPPED: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_local_samples_dropped_total",
-        "Number of samples dropped before processing, a nonzero value means CPU overload",
+        "Number of local samples dropped before processing, a nonzero value means CPU overload",
         &[&"frequency"],
     )
     .unwrap();
     static ref LOCAL_MODEAC: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_local_modeac_decoded_total",
-        "Number of mode A/C messages decoded",
+        "Number of local mode A/C messages decoded",
         &[&"frequency"],
     )
     .unwrap();
     static ref LOCAL_MODES: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_local_modes_preambles_total",
-        "Number of mode S preambles recieved",
+        "Number of local mode S preambles received",
         &[&"frequency"],
     )
     .unwrap();
     static ref LOCAL_MODES_BAD: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_local_modes_bad_total",
-        "Number of Mode S preambles that didn't result in a valid message",
+        "Number of local mode S preambles that didn't result in a valid message",
         &[&"frequency"],
     )
     .unwrap();
     static ref LOCAL_UNKNOWN_ICAO: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_local_modes_unknown_icao_total",
-        "Number of Mode S preambles with an unknown ICAO address",
+        "Number of local mode S preambles with an unknown ICAO address",
         &[&"frequency"],
     )
     .unwrap();
-    static ref LOCAL_UNKNOWN_ACCEPTED: IntCounterVec = register_int_counter_vec!(
+    static ref LOCAL_ACCEPTED: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_local_modes_accepted_total",
-        "Number of valid Mode S messages labeled by N-bit error corrections",
+        "Number of local valid mode S messages labeled with N-bit error corrections",
         &[&"frequency", "corrections"],
     )
     .unwrap();
     static ref LOCAL_SIGNAL: GaugeVec = register_gauge_vec!(
         "adsb_stats_local_signal_dbfs_mean",
-        "Mean signal power of received messages in dbFS",
+        "Mean signal power of local received messages in dBFS",
         &[&"frequency"],
     )
     .unwrap();
     static ref LOCAL_SIGNAL_PEAK: GaugeVec = register_gauge_vec!(
         "adsb_stats_local_signal_dbfs_peak",
-        "Peak signal power of received messages in dBFS",
+        "Peak signal power of local received messages in dBFS",
         &[&"frequency"],
     )
     .unwrap();
     static ref LOCAL_NOISE: GaugeVec = register_gauge_vec!(
         "adsb_stats_local_noise_dbfs_mean",
-        "Mean signal noise of received messages in dBFS",
+        "Mean signal noise of local received messages in dBFS",
         &[&"frequency"],
     )
     .unwrap();
     static ref LOCAL_STRONG_SIGNALS: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_local_strong_signals_total",
-        "Number of messages received with a signal power above -3dBFS",
+        "Number of local messages received with a signal power above -3dBFS",
         &[&"frequency", "corrections"],
     )
     .unwrap();
+
+    // messages
     static ref MESSAGES: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_messages_total",
         "Number of messages received from any source",
@@ -125,6 +150,38 @@ lazy_static! {
         "adsb_stats_messages_by_df_total",
         "Number of messages received per downlink format",
         &[&"frequency", "downlink_format"],
+    )
+    .unwrap();
+
+    // remote
+    static ref REMOTE_MODEAC: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_remote_modeac_decoded_total",
+        "Number of remote mode A/C messages decoded",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref REMOTE_MODES: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_remote_modes_preambles_total",
+        "Number of remote mode S preambles received",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref REMOTE_MODES_BAD: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_remote_modes_bad_total",
+        "Number of remote mode S preambles that didn't result in a valid message",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref REMOTE_UNKNOWN_ICAO: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_remote_modes_unknown_icao_total",
+        "Number of remote mode S preambles with an unknown ICAO address",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref REMOTE_ACCEPTED: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_remote_modes_accepted_total",
+        "Number of valid remote mode S messages labeled by N-bit error corrections",
+        &[&"frequency", "corrections"],
     )
     .unwrap();
 }
@@ -190,6 +247,47 @@ impl StatsJson {
             }
         }
 
+        // .total.cpu
+        let cpu = total
+            .get("cpu")
+            .context("Missing cpu data in \"total\" object")?;
+
+        if let Some(value) = cpu.get("demod") {
+            if let Some(value) = value.as_f64() {
+                let value = value / 1000.0; // convert to seconds
+
+                let increment = value - CPU_DEMOD.with_label_values(&[&self.frequency]).get();
+
+                CPU_DEMOD
+                    .with_label_values(&[&self.frequency])
+                    .inc_by(increment);
+            }
+        }
+
+        if let Some(value) = cpu.get("reader") {
+            if let Some(value) = value.as_f64() {
+                let value = value / 1000.0; // convert to seconds
+
+                let increment = value - CPU_READER.with_label_values(&[&self.frequency]).get();
+
+                CPU_READER
+                    .with_label_values(&[&self.frequency])
+                    .inc_by(increment);
+            }
+        }
+
+        if let Some(value) = cpu.get("background") {
+            if let Some(value) = value.as_f64() {
+                let value = value / 1000.0; // convert to seconds
+
+                let increment = value - CPU_BACKGROUND.with_label_values(&[&self.frequency]).get();
+
+                CPU_BACKGROUND
+                    .with_label_values(&[&self.frequency])
+                    .inc_by(increment);
+            }
+        }
+
         // .total.local
         let local = total
             .get("local")
@@ -219,6 +317,54 @@ impl StatsJson {
             "unknown_icao",
             as_u64
         );
+
+        if let Some(accepted) = local.get("accepted") {
+            if let Some(accepted) = accepted.as_array() {
+                accepted
+                    .iter()
+                    .enumerate()
+                    .for_each(|(corrections, count)| {
+                        update_counter!(
+                            LOCAL_ACCEPTED,
+                            &[&self.frequency, &corrections.to_string()],
+                            count,
+                            as_u64
+                        );
+                    });
+            }
+        }
+
+        // .total.remote
+        let remote = total
+            .get("remote")
+            .context("Missing remote data in \"total\" object")?;
+
+        set_counter!(REMOTE_MODEAC, &[&self.frequency], remote, "modeac", as_u64);
+        set_counter!(REMOTE_MODES, &[&self.frequency], remote, "modes", as_u64);
+        set_counter!(REMOTE_MODES_BAD, &[&self.frequency], remote, "bad", as_u64);
+        set_counter!(
+            REMOTE_UNKNOWN_ICAO,
+            &[&self.frequency],
+            remote,
+            "unknown_icao",
+            as_u64
+        );
+
+        if let Some(accepted) = remote.get("accepted") {
+            if let Some(accepted) = accepted.as_array() {
+                accepted
+                    .iter()
+                    .enumerate()
+                    .for_each(|(corrections, count)| {
+                        update_counter!(
+                            REMOTE_ACCEPTED,
+                            &[&self.frequency, &corrections.to_string()],
+                            count,
+                            as_u64
+                        );
+                    });
+            }
+        }
 
         Ok(())
     }
