@@ -184,6 +184,26 @@ lazy_static! {
         &[&"frequency", "corrections"],
     )
     .unwrap();
+
+    // tracks
+    static ref TRACKS_ALL: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_tracks_total",
+        "Number of unique aircraft tracks",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref TRACKS_SINGLE: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_tracks_single_message_total",
+        "Number of single message aircraft tracks",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref TRACKS_UNRELIABLE: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_tracks_unreliable_total",
+        "Number of unreliable tracks marked unreliable",
+        &[&"frequency"],
+    )
+    .unwrap();
 }
 
 pub struct StatsJson {
@@ -365,6 +385,27 @@ impl StatsJson {
                     });
             }
         }
+
+        // .total.tracks
+        let tracks = total
+            .get("tracks")
+            .context("Missing tracks data in \"total\" object")?;
+
+        set_counter!(TRACKS_ALL, &[&self.frequency], tracks, "all", as_u64);
+        set_counter!(
+            TRACKS_SINGLE,
+            &[&self.frequency],
+            tracks,
+            "single_message",
+            as_u64
+        );
+        set_counter!(
+            TRACKS_UNRELIABLE,
+            &[&self.frequency],
+            tracks,
+            "unreliable",
+            as_u64
+        );
 
         Ok(())
     }
