@@ -51,6 +51,50 @@ macro_rules! set_gauge {
 }
 
 lazy_static! {
+    // adaptive
+    static ref ADAPTIVE_GAIN: GaugeVec = register_gauge_vec!(
+        "adsb_stats_adaptive_gain_dB",
+        "Current adaptive gain setting",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref ADAPTIVE_GAIN_LIMIT: GaugeVec = register_gauge_vec!(
+        "adsb_stats_adaptive_gain_dynamic_range_limit_dB",
+        "Current dynamic range gain upper limit",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref ADAPTIVE_NOISE_FLOOR: GaugeVec = register_gauge_vec!(
+        "adsb_stats_adaptive_gain_noise_floor_dBFS",
+        "Current dynamic range noise floor",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref ADAPTIVE_GAIN_CHANGES: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_adaptive_gain_changes_total",
+        "Number of dynamic gain changes",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref ADAPTIVE_UNDECODED: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_adaptive_loud_undecoded_total",
+        "Number of loud undecoded bursts",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref ADAPTIVE_DECODED: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_adaptive_loud_decoded_total",
+        "Number of loud decoded messages",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref ADAPTIVE_GAIN_SECONDS: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_adaptive_gain_seconds_total",
+        "Number of seconds spent in a dB gain level",
+        &[&"frequency", "gain_dB"],
+    )
+    .unwrap();
+
     // CPR
     static ref CPR_SURFACE: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_cpr_surface_total",
@@ -201,7 +245,7 @@ lazy_static! {
     )
     .unwrap();
     static ref LOCAL_SIGNAL: GaugeVec = register_gauge_vec!(
-        "adsb_stats_local_signal_dbfs_mean",
+        "adsb_stats_local_signal_dbfs",
         "Mean signal power of local received messages in dBFS",
         &[&"frequency"],
     )
@@ -213,7 +257,7 @@ lazy_static! {
     )
     .unwrap();
     static ref LOCAL_NOISE: GaugeVec = register_gauge_vec!(
-        "adsb_stats_local_noise_dbfs_mean",
+        "adsb_stats_local_noise_dbfs",
         "Mean signal noise of local received messages in dBFS",
         &[&"frequency"],
     )
@@ -350,6 +394,74 @@ impl StatsJson {
                             as_u64
                         );
                     });
+            }
+        }
+
+        // .total.adaptive
+        let adaptive = total
+            .get("adaptive")
+            .context("Missing adaptive data in \"total\" object")?;
+
+        set_counter!(
+            ADAPTIVE_DECODED,
+            &[&self.frequency],
+            adaptive,
+            "loud_decoded",
+            as_u64
+        );
+        set_counter!(
+            ADAPTIVE_GAIN_CHANGES,
+            &[&self.frequency],
+            adaptive,
+            "gain_changes",
+            as_u64
+        );
+        set_counter!(
+            ADAPTIVE_UNDECODED,
+            &[&self.frequency],
+            adaptive,
+            "loud_undecoded",
+            as_u64
+        );
+
+        set_gauge!(
+            ADAPTIVE_GAIN,
+            &[&self.frequency],
+            adaptive,
+            "gain_db",
+            as_f64
+        );
+        set_gauge!(
+            ADAPTIVE_GAIN_LIMIT,
+            &[&self.frequency],
+            adaptive,
+            "dynamic_range_limit_db",
+            as_f64
+        );
+        set_gauge!(
+            ADAPTIVE_NOISE_FLOOR,
+            &[&self.frequency],
+            adaptive,
+            "noise_dbfs",
+            as_f64
+        );
+
+        if let Some(gain_seconds) = adaptive.get("gain_seconds") {
+            if let Some(gain_seconds) = gain_seconds.as_array() {
+                gain_seconds.iter().for_each(|pair| {
+                    if let Some(pair) = pair.as_array() {
+                        if let Some(gain) = pair[0].as_f64() {
+                            let seconds = &pair[1];
+
+                            update_counter!(
+                                ADAPTIVE_GAIN_SECONDS,
+                                &[&self.frequency, &gain.to_string()],
+                                seconds,
+                                as_u64
+                            );
+                        }
+                    }
+                });
             }
         }
 
