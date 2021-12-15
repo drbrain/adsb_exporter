@@ -567,6 +567,23 @@ impl StatsJson {
             as_u64
         );
 
+        //
+        let last1min = data.get("last1min").context("missing last1min data")?;
+
+        let local = last1min
+            .get("local")
+            .context("Missing local data in \"last1min\" object")?;
+
+        set_gauge!(LOCAL_SIGNAL, &[&self.frequency], local, "signal", as_f64);
+        set_gauge!(
+            LOCAL_SIGNAL_PEAK,
+            &[&self.frequency],
+            local,
+            "peak_signal",
+            as_f64
+        );
+        set_gauge!(LOCAL_NOISE, &[&self.frequency], local, "noise", as_f64);
+
         Ok(())
     }
 }
