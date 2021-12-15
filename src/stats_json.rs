@@ -51,6 +51,92 @@ macro_rules! set_gauge {
 }
 
 lazy_static! {
+    // CPR
+    static ref CPR_SURFACE: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_cpr_surface_total",
+        "Number of surface CPR messages received",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref CPR_AIRBORNE: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_cpr_airborne_total",
+        "Number of airborne CPR messages received",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref CPR_GLOBAL_OK: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_cpr_global_ok_total",
+        "Number of global positions derived",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref CPR_GLOBAL_BAD: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_cpr_global_bad_total",
+        "Number of global positions rejected for inconsistency",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref CPR_GLOBAL_RANGE: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_cpr_global_bad_range_total",
+        "Number of global bad positions exceeding the receiver maximum range",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref CPR_GLOBAL_SPEED: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_cpr_global_bad_speed_total",
+        "Number of global bad positions exceeding inter-position speed checks",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref CPR_GLOBAL_SKIPPED: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_cpr_global_skipped_total",
+        "Number of global position attempts skipped due to missing data",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref CPR_LOCAL_OK: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_cpr_local_ok_total",
+        "Number of local (relative) positions found",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref CPR_LOCAL_AIRCRAFT: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_cpr_local_aircraft_relative_total",
+        "Number of local positions relative to a previous aircraft position",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref CPR_LOCAL_RECEIVER: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_cpr_local_receiver_relative_total",
+        "Number of local positions relative to the receiver position",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref CPR_LOCAL_RANGE: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_cpr_local_bad_range_total",
+        "Number of local bad positions exceeding the receiver maximum range, or with an ambiguous range",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref CPR_LOCAL_SPEED: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_cpr_local_bad_speed_total",
+        "Number of local bad positions exceeding inter-position speed checks",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref CPR_LOCAL_SKIPPED: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_cpr_local_skipped_total",
+        "Number of local position attempts skipped due to missing data",
+        &[&"frequency"],
+    )
+    .unwrap();
+    static ref CPR_FILTERED: IntCounterVec = register_int_counter_vec!(
+        "adsb_stats_cpr_filtered_total",
+        "Number of CPR messages ignored for matching faulty transponder heuristics",
+        &[&"frequency"],
+    )
+    .unwrap();
+
     // cpu
     static ref CPU_DEMOD: CounterVec = register_counter_vec!(
         "adsb_stats_cpu_demodulation_seconds_total",
@@ -266,6 +352,80 @@ impl StatsJson {
                     });
             }
         }
+
+        // .total.cpr
+        let cpr = total
+            .get("cpr")
+            .context("Missing cpr data in \"total\" object")?;
+
+        set_counter!(CPR_AIRBORNE, &[&self.frequency], cpr, "airborne", as_u64);
+        set_counter!(CPR_FILTERED, &[&self.frequency], cpr, "filtered", as_u64);
+        set_counter!(
+            CPR_GLOBAL_BAD,
+            &[&self.frequency],
+            cpr,
+            "global_bad",
+            as_u64
+        );
+        set_counter!(CPR_GLOBAL_OK, &[&self.frequency], cpr, "global_ok", as_u64);
+        set_counter!(
+            CPR_GLOBAL_RANGE,
+            &[&self.frequency],
+            cpr,
+            "global_range",
+            as_u64
+        );
+        set_counter!(
+            CPR_GLOBAL_SKIPPED,
+            &[&self.frequency],
+            cpr,
+            "global_bad",
+            as_u64
+        );
+        set_counter!(
+            CPR_GLOBAL_SPEED,
+            &[&self.frequency],
+            cpr,
+            "global_speed",
+            as_u64
+        );
+        set_counter!(
+            CPR_LOCAL_AIRCRAFT,
+            &[&self.frequency],
+            cpr,
+            "local_aircraft_relative",
+            as_u64
+        );
+        set_counter!(CPR_LOCAL_OK, &[&self.frequency], cpr, "local_ok", as_u64);
+        set_counter!(
+            CPR_LOCAL_RANGE,
+            &[&self.frequency],
+            cpr,
+            "local_range",
+            as_u64
+        );
+        set_counter!(
+            CPR_LOCAL_RECEIVER,
+            &[&self.frequency],
+            cpr,
+            "local_receiver_relative",
+            as_u64
+        );
+        set_counter!(
+            CPR_LOCAL_SKIPPED,
+            &[&self.frequency],
+            cpr,
+            "local_skipped",
+            as_u64
+        );
+        set_counter!(
+            CPR_LOCAL_SPEED,
+            &[&self.frequency],
+            cpr,
+            "local_speed",
+            as_u64
+        );
+        set_counter!(CPR_SURFACE, &[&self.frequency], cpr, "surface", as_u64);
 
         // .total.cpu
         let cpu = total
