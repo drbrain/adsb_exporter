@@ -6,6 +6,7 @@ edition = "2018"
 [dependencies]
 anyhow           = "^1.0"
 env_logger       = "0.9"
+geo              = "0.18.0"
 lazy_static      = "^1.4"
 log              = "0.4"
 prometheus       = "0.13.0"
