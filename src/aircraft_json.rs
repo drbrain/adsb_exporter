@@ -20,19 +20,19 @@ use std::time::Duration;
 use tokio::time::sleep;
 
 lazy_static! {
-    static ref AIRCRAFT_RECENT_OBSERVED: GaugeVec = register_gauge_vec!(
+    static ref RECENT_OBSERVED: GaugeVec = register_gauge_vec!(
         "adsb_aircraft_recent_observed_total",
         "Number of aircraft recently observed",
         &[&"frequency"],
     )
     .unwrap();
-    static ref AIRCRAFT_RECENT_POSITIONS: GaugeVec = register_gauge_vec!(
+    static ref RECENT_POSITIONS: GaugeVec = register_gauge_vec!(
         "adsb_aircraft_recent_positions_total",
         "Number of aircraft recently observed with a position",
         &[&"frequency"],
     )
     .unwrap();
-    static ref AIRCRAFT_RECENT_MLAT: GaugeVec = register_gauge_vec!(
+    static ref RECENT_MLAT: GaugeVec = register_gauge_vec!(
         "adsb_aircraft_recent_mlat_total",
         "Number of aircraft recently observed with a position determined by multilateration",
         &[&"frequency"],
@@ -84,22 +84,22 @@ impl AircraftJson {
         let observed = aircrafts
             .iter()
             .filter(|a| {
-                a.get("seen")
-                    .unwrap_or(&json!(()))
-                    .as_f64()
-                    .unwrap_or(f64::INFINITY)
-                    < 60.0
+                if let Some(seen) = a.get("seen") {
+                    seen.as_f64().unwrap_or(f64::INFINITY) < 60.0
+                } else {
+                    false
+                }
             })
             .count();
 
         let positions = aircrafts
             .iter()
             .filter(|a| {
-                a.get("seen_pos")
-                    .unwrap_or(&json!(()))
-                    .as_f64()
-                    .unwrap_or(f64::INFINITY)
-                    < 60.0
+                if let Some(seen) = a.get("seen_pos") {
+                    seen.as_f64().unwrap_or(f64::INFINITY) < 60.0
+                } else {
+                    false
+                }
             })
             .count();
 
@@ -109,26 +109,29 @@ impl AircraftJson {
         let mlat = aircrafts
             .iter()
             .filter(|a| {
-                a.get("seen_pos")
-                    .unwrap_or(&json!(()))
-                    .as_f64()
-                    .unwrap_or(f64::INFINITY)
-                    < 60.0
-                    && a.get("mlat")
-                        .unwrap_or(&json!([]))
-                        .as_array()
-                        .unwrap_or(&empty_vec)
-                        .contains(&lat)
+                let located = if let Some(seen) = a.get("seen_pos") {
+                    seen.as_f64().unwrap_or(f64::INFINITY) < 60.0
+                } else {
+                    false
+                };
+
+                let mlat = if let Some(mlat) = a.get("mlat") {
+                    mlat.as_array().unwrap_or(&empty_vec).contains(&lat)
+                } else {
+                    false
+                };
+
+                located && mlat
             })
             .count();
 
-        AIRCRAFT_RECENT_OBSERVED
+        RECENT_OBSERVED
             .with_label_values(&[&self.frequency])
             .set(observed as f64);
-        AIRCRAFT_RECENT_POSITIONS
+        RECENT_POSITIONS
             .with_label_values(&[&self.frequency])
             .set(positions as f64);
-        AIRCRAFT_RECENT_MLAT
+        RECENT_MLAT
             .with_label_values(&[&self.frequency])
             .set(mlat as f64);
 
