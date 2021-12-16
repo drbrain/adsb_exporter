@@ -1,5 +1,6 @@
 use crate::aircraft_json::AircraftJson;
 use crate::configuration::Configuration;
+use crate::receiver_json::ReceiverJson;
 use crate::stats_json::StatsJson;
 
 use log::info;
@@ -47,6 +48,18 @@ impl DumpWatcher {
 
     pub async fn run(self) {
         info!("Watching dump{} at {}", self.frequency, self.base_uri);
+
+        let receiver_url = format!("{}/data/{}", self.base_uri, "receiver.json");
+        let receiver_json = ReceiverJson::new(
+            self.client.clone(),
+            self.frequency,
+            receiver_url,
+            self.receiver_interval,
+        );
+
+        tokio::spawn(async move {
+            receiver_json.run().await;
+        });
 
         let aircraft_url = format!("{}/data/{}", self.base_uri, "aircraft.json");
         let aircraft_json = AircraftJson::new(

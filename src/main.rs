@@ -3,6 +3,7 @@ mod aircraft_json;
 mod configuration;
 mod dump_watcher;
 mod fetch;
+mod receiver_json;
 mod stats_json;
 
 use anyhow::anyhow;
