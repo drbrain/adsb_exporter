@@ -57,9 +57,12 @@ impl DumpWatcher {
             self.receiver_interval,
         );
 
-        tokio::spawn(async move {
-            receiver_json.run().await;
-        });
+        crate::spawn_named(
+            async move {
+                receiver_json.run().await;
+            },
+            &format!("receiver_json::{}", self.frequency),
+        );
 
         let aircraft_url = format!("{}/data/{}", self.base_uri, "aircraft.json");
         let aircraft_json = AircraftJson::new(
@@ -69,9 +72,12 @@ impl DumpWatcher {
             self.aircraft_interval,
         );
 
-        tokio::spawn(async move {
-            aircraft_json.run().await;
-        });
+        crate::spawn_named(
+            async move {
+                aircraft_json.run().await;
+            },
+            &format!("aircraft_json::{}", self.frequency),
+        );
 
         if self.frequency == 1090 {
             let stats_url = format!("{}/data/{}", self.base_uri, "stats.json");
@@ -82,9 +88,12 @@ impl DumpWatcher {
                 self.stats_interval,
             );
 
-            tokio::spawn(async move {
-                stats_json.run().await;
-            });
+            crate::spawn_named(
+                async move {
+                    stats_json.run().await;
+                },
+                &format!("stats_json::{}", self.frequency),
+            );
         }
     }
 }

@@ -61,3 +61,18 @@ async fn wait_for_error(mut error_rx: mpsc::Receiver<anyhow::Error>) -> i32 {
 
     1
 }
+
+#[track_caller]
+pub(crate) fn spawn_named<T>(
+    task: impl std::future::Future<Output = T> + Send + 'static,
+    _name: &str,
+) -> tokio::task::JoinHandle<T>
+where
+    T: Send + 'static,
+{
+    #[cfg(tokio_unstable)]
+    return tokio::task::Builder::new().name(_name).spawn(task);
+
+    #[cfg(not(tokio_unstable))]
+    tokio::spawn(task)
+}

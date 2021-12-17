@@ -54,8 +54,11 @@ impl ADSBExporter {
     }
 
     pub async fn start(self, error_tx: ErrorSender) {
-        tokio::spawn(async move {
-            self.run(error_tx).await;
-        });
+        crate::spawn_named(
+            async move {
+                self.run(error_tx).await;
+            },
+            "adsb_exporter",
+        );
     }
 }
