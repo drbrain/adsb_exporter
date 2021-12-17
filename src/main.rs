@@ -22,6 +22,8 @@ use tokio::sync::mpsc;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    console_subscriber::init();
+
     Builder::from_env(Env::default().default_filter_or("info")).init();
 
     let configuration = Configuration::load_from_next_arg();
