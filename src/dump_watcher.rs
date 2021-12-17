@@ -46,7 +46,7 @@ impl DumpWatcher {
         }
     }
 
-    pub async fn run(self) {
+    pub async fn start(self) {
         info!("Watching dump{} at {}", self.frequency, self.base_uri);
 
         let receiver_url = format!("{}/data/{}", self.base_uri, "receiver.json");
@@ -86,11 +86,5 @@ impl DumpWatcher {
                 stats_json.run().await;
             });
         }
-    }
-
-    pub async fn start(self) {
-        tokio::spawn(async move {
-            self.run().await;
-        });
     }
 }
