@@ -19,15 +19,16 @@ use reqwest::Client;
 use serde_json::Value;
 
 use std::time::Duration;
+use std::num::Wrapping;
 
 use tokio::time::sleep;
 
 macro_rules! update_counter {
     ( $metric:ident, $labels:expr, $value:ident, $conversion:ident ) => {
         if let Some(value) = $value.$conversion() {
-            let increment = value - $metric.with_label_values($labels).get();
+            let increment = Wrapping(value) - Wrapping($metric.with_label_values($labels).get());
 
-            $metric.with_label_values($labels).inc_by(increment);
+            $metric.with_label_values($labels).inc_by(increment.0);
         }
     };
 }
