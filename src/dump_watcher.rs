@@ -57,6 +57,8 @@ impl DumpWatcher {
             self.receiver_interval,
         );
 
+        let position = receiver_json.position();
+
         crate::spawn_named(
             async move {
                 receiver_json.run().await;
@@ -70,6 +72,7 @@ impl DumpWatcher {
             self.frequency,
             aircraft_url,
             self.aircraft_interval,
+            position,
         );
 
         crate::spawn_named(

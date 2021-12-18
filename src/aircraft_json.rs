@@ -12,6 +12,7 @@ use geo::Point;
 use lazy_static::lazy_static;
 
 use log::debug;
+use log::info;
 
 use prometheus::register_gauge_vec;
 use prometheus::register_int_gauge_vec;
@@ -24,8 +25,10 @@ use serde_json::json;
 use serde_json::Value;
 
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 
+use tokio::sync::RwLock;
 use tokio::time::sleep;
 
 lazy_static! {
@@ -66,10 +69,17 @@ pub struct AircraftJson {
     frequency: String,
     url: String,
     interval: Duration,
+    position: Arc<RwLock<Option<Coordinate<f64>>>>,
 }
 
 impl AircraftJson {
-    pub fn new(client: Client, frequency: u32, url: String, interval: Duration) -> AircraftJson {
+    pub fn new(
+        client: Client,
+        frequency: u32,
+        url: String,
+        interval: Duration,
+        position: Arc<RwLock<Option<Coordinate<f64>>>>,
+    ) -> AircraftJson {
         let frequency = frequency.to_string();
 
         AircraftJson {
@@ -77,13 +87,14 @@ impl AircraftJson {
             frequency,
             url,
             interval,
+            position,
         }
     }
 
     pub async fn run(&self) {
         loop {
             if let Some(data) = fetch(&self.client, &self.url).await {
-                match self.update_aircraft(data) {
+                match self.update_aircraft(data).await {
                     Ok(_) => (),
                     Err(e) => {
                         debug!("error updating aircraft {:?}", e);
@@ -95,7 +106,7 @@ impl AircraftJson {
         }
     }
 
-    fn update_aircraft(&self, data: Value) -> Result<()> {
+    async fn update_aircraft(&self, data: Value) -> Result<()> {
         let aircrafts = data
             .get("aircraft")
             .context("missing aircraft data")?
@@ -113,6 +124,10 @@ impl AircraftJson {
             })
             .count();
 
+        RECENT_OBSERVED
+            .with_label_values(&[&self.frequency])
+            .set(observed as f64);
+
         let positions = aircrafts
             .iter()
             .filter(|a| {
@@ -123,6 +138,10 @@ impl AircraftJson {
                 }
             })
             .count();
+
+        RECENT_POSITIONS
+            .with_label_values(&[&self.frequency])
+            .set(positions as f64);
 
         let lat = json!("lat");
         let empty_vec = vec![];
@@ -146,10 +165,22 @@ impl AircraftJson {
             })
             .count();
 
-        let receiver_position = Coordinate {
-            x: 47.59,
-            y: -122.30,
+        RECENT_MLAT
+            .with_label_values(&[&self.frequency])
+            .set(mlat as f64);
+
+        let receiver_position = self.position.read().await;
+        let receiver_position = match *receiver_position {
+            Some(position) => position.clone(),
+            None => {
+                info!(
+                    "Receiver for {}Hz position unknown, maybe receiver.json hasn't been fetched?",
+                    self.frequency
+                );
+                return Ok(());
+            }
         };
+
         let receiver_point: Point<f64> = receiver_position.into();
 
         let mut observations = HashMap::with_capacity(positions);
@@ -203,15 +234,6 @@ impl AircraftJson {
                 ranges.insert(bearing_bucket, bearing_ranges);
             });
 
-        RECENT_OBSERVED
-            .with_label_values(&[&self.frequency])
-            .set(observed as f64);
-        RECENT_POSITIONS
-            .with_label_values(&[&self.frequency])
-            .set(positions as f64);
-        RECENT_MLAT
-            .with_label_values(&[&self.frequency])
-            .set(mlat as f64);
         observations
             .iter()
             .for_each(|((distance, bearing), count)| {
@@ -219,6 +241,7 @@ impl AircraftJson {
                     .with_label_values(&[&self.frequency, &bearing, &distance])
                     .set(*count)
             });
+
         ranges.iter().for_each(|(bearing, bearing_ranges)| {
             if let Some(maximum) =
                 bearing_ranges.iter().reduce(

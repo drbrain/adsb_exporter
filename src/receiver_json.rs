@@ -1,7 +1,9 @@
-use crate::fetch::fetch;
-
 use anyhow::Context;
 use anyhow::Result;
+
+use crate::fetch::fetch;
+
+use geo::Coordinate;
 
 use lazy_static::lazy_static;
 
@@ -14,8 +16,10 @@ use reqwest::Client;
 
 use serde_json::Value;
 
+use std::sync::Arc;
 use std::time::Duration;
 
+use tokio::sync::RwLock;
 use tokio::time::sleep;
 
 lazy_static! {
@@ -38,24 +42,31 @@ pub struct ReceiverJson {
     frequency: String,
     url: String,
     interval: Duration,
+    position: Arc<RwLock<Option<Coordinate<f64>>>>,
 }
 
 impl ReceiverJson {
     pub fn new(client: Client, frequency: u32, url: String, interval: Duration) -> ReceiverJson {
         let frequency = frequency.to_string();
+        let position = Arc::new(RwLock::new(None));
 
         ReceiverJson {
             client,
             frequency,
             url,
             interval,
+            position,
         }
+    }
+
+    pub fn position(&self) -> Arc<RwLock<Option<Coordinate<f64>>>> {
+        self.position.clone()
     }
 
     pub async fn run(&self) {
         loop {
             if let Some(data) = fetch(&self.client, &self.url).await {
-                match self.update_receiver(data) {
+                match self.update_receiver(data).await {
                     Ok(_) => (),
                     Err(e) => {
                         debug!("error updating receiver {:?}", e);
@@ -67,7 +78,7 @@ impl ReceiverJson {
         }
     }
 
-    fn update_receiver(&self, data: Value) -> Result<()> {
+    async fn update_receiver(&self, data: Value) -> Result<()> {
         let version = data
             .get("version")
             .context("Missing field version from receiver.json")?
@@ -93,6 +104,15 @@ impl ReceiverJson {
         POSITION
             .with_label_values(&[&self.frequency, &latitude, &longitude])
             .set(1.0);
+
+        let latitude = latitude.parse::<f64>().unwrap();
+        let longitude = longitude.parse::<f64>().unwrap();
+
+        let mut position = self.position.write().await;
+        *position = Some(Coordinate {
+            x: latitude,
+            y: longitude,
+        });
 
         Ok(())
     }
