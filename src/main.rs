@@ -1,17 +1,19 @@
 mod adsb_exporter;
 mod aircraft_json;
+mod beast;
 mod configuration;
 mod dump_watcher;
 mod fetch;
 mod receiver_json;
 mod stats_json;
 
+use crate::adsb_exporter::ADSBExporter;
+use crate::beast::Client;
+use crate::configuration::Configuration;
+use crate::dump_watcher::DumpWatcher;
+
 use anyhow::anyhow;
 use anyhow::Result;
-
-use adsb_exporter::ADSBExporter;
-use configuration::Configuration;
-use dump_watcher::DumpWatcher;
 
 use env_logger::Builder;
 use env_logger::Env;
@@ -27,6 +29,11 @@ async fn main() -> Result<()> {
     Builder::from_env(Env::default().default_filter_or("info")).init();
 
     let configuration = Configuration::load_from_next_arg();
+
+    let mut client = Client::new("pitime:30005".to_string()).await?;
+    client.run().await;
+
+    std::process::exit(5);
 
     if let Some(base_uri) = configuration.dump1090_url() {
         DumpWatcher::new(&configuration, 1090, base_uri)
