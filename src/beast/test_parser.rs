@@ -43,7 +43,7 @@ fn test_parse_df_0() {
     let data = parse_df_0(&input);
 
     let expected = Data::ACASSurveillanceReply(ACASSurveillanceReply {
-        vertical_status: FlightStatus::Uncertain,
+        vertical_status: AircraftStatus::Either,
         cross_link: CrossLink::Supported,
         sensitivity_level: SensitivityLevel::Operative(4),
         reply_information: ReplyInformation::ACASVerticalOnly,
@@ -54,13 +54,35 @@ fn test_parse_df_0() {
 }
 
 #[test]
+fn test_parse_df_4() {
+    let input = vec![0x20, 0x00, 0x03, 0x97, 0xc2, 0x6e, 0x02];
+
+    let data = parse_df_4(&input);
+
+    let expected = Data::AltitudeReply(AltitudeReply {
+        flight_status: FlightStatus {
+            alert: false,
+            spi: true,
+            status: AircraftStatus::OnGround,
+        },
+        downlink_request: 20,
+        utility_message: 8,
+        altitude: Altitude::Feet(0),
+    });
+}
+
+#[test]
 fn test_parse_df_5() {
     let input = vec![0x5d, 0xa1, 0x1b, 0x00, 0x44, 0xe9, 0x57];
 
     let data = parse_df_5(&input);
 
     let expected = Data::SurveillanceReply(SurveillanceReply {
-        flight_status: FlightStatus::Uncertain,
+        flight_status: FlightStatus {
+            alert: false,
+            spi: true,
+            status: AircraftStatus::Either,
+        },
         downlink_request: 20,
         utility_message: 8,
         id: 12368,

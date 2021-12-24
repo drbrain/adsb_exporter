@@ -1,10 +1,17 @@
 #[derive(Debug, PartialEq)]
 pub struct ACASSurveillanceReply {
-    pub vertical_status: FlightStatus,
+    pub vertical_status: AircraftStatus,
     pub cross_link: CrossLink,
     pub sensitivity_level: SensitivityLevel,
     pub reply_information: ReplyInformation,
     pub altitude: Altitude,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum AircraftStatus {
+    OnGround,
+    Airborne,
+    Either,
 }
 
 #[derive(Debug, PartialEq)]
@@ -15,16 +22,24 @@ pub enum Altitude {
 }
 
 #[derive(Debug, PartialEq)]
+pub struct AltitudeReply {
+    pub flight_status: FlightStatus,
+    pub downlink_request: u8,
+    pub utility_message: u8,
+    pub altitude: Altitude,
+}
+
+#[derive(Debug, PartialEq)]
 pub enum CrossLink {
     Unsupported,
     Supported,
 }
 
 #[derive(Debug, PartialEq)]
-pub enum FlightStatus {
-    Airborne,
-    Ground,
-    Uncertain,
+pub struct FlightStatus {
+    pub alert: bool,
+    pub spi: bool,
+    pub status: AircraftStatus,
 }
 
 #[derive(Debug)]
@@ -43,6 +58,7 @@ pub struct ModeS {
 #[derive(Debug, PartialEq)]
 pub enum Data {
     ACASSurveillanceReply(ACASSurveillanceReply),
+    AltitudeReply(AltitudeReply),
     SurveillanceReply(SurveillanceReply),
     Unsupported(Vec<u8>),
 }

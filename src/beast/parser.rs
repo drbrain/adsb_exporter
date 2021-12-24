@@ -75,12 +75,10 @@ fn mode_s(timestamp: u32, signal_level: f64, input: &[u8]) -> IResult<&[u8], Mes
     let (_, message_type): (_, u8) =
         bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(take(4usize))(input).unwrap();
 
-    dbg!(message_type);
-
     let data = match message_type {
         0 => parse_df_0(input),
+        4 => parse_df_4(input),
         5 => parse_df_5(input),
-        8 => parse_df_8(input),
         _ => panic!("message type {} not supported", message_type),
     };
 
@@ -120,6 +118,29 @@ pub(crate) fn parse_df_0(input: &[u8]) -> Data {
     Data::ACASSurveillanceReply(reply)
 }
 
+pub(crate) fn parse_df_4(input: &[u8]) -> Data {
+    use nom::bits::bits;
+    use nom::bits::complete::take;
+
+    let (_, reply) = bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(map(
+        tuple((
+            preceded::<_, u8, _, _, _, _>(take(5usize), map(take(3usize), flight_status)),
+            take(5usize),
+            take(6usize),
+            map(take(13usize), altitude_code),
+        )),
+        |(flight_status, downlink_request, utility_message, altitude)| AltitudeReply {
+            flight_status,
+            downlink_request,
+            utility_message,
+            altitude,
+        },
+    ))(input)
+    .unwrap();
+
+    Data::AltitudeReply(reply)
+}
+
 pub(crate) fn parse_df_5(input: &[u8]) -> Data {
     use nom::bits::bits;
     use nom::bits::complete::take;
@@ -143,9 +164,6 @@ pub(crate) fn parse_df_5(input: &[u8]) -> Data {
     Data::SurveillanceReply(reply)
 }
 
-pub(crate) fn parse_df_8(input: &[u8]) -> Data {
-    Data::Unsupported(input.to_vec())
-}
 fn aa(input: &[u8], message_type: u8) -> Option<u32> {
     match message_type {
         11 | 17 | 18 => Some(input[1..3].iter().fold(0u32, |ts, c| (ts << 8) | *c as u32)),
@@ -166,6 +184,8 @@ const FIVES_PATTERN: [(u16, u16); 8] = [
     (0x0400, 0x01),
 ];
 
+const Q_BIT: u16 = 0x10;
+
 // AC
 fn altitude_code(ac: u16) -> Altitude {
     if 0 == ac {
@@ -179,7 +199,7 @@ fn altitude_code(ac: u16) -> Altitude {
         }
         false => {
             // feet
-            match 0x10 == (0x10 & ac) {
+            match Q_BIT == (Q_BIT & ac) {
                 true => {
                     // × 25 foot
                     let feet: i32 = (((0x1f80 & ac) >> 2) | ((0x20 & ac) >> 1) | (0xf & ac)).into();
@@ -245,13 +265,39 @@ fn cross_link(cc: u8) -> CrossLink {
 // FS
 fn flight_status(fs: u8) -> FlightStatus {
     match fs {
-        0 => FlightStatus::Uncertain,
-        1 => FlightStatus::Ground,
-        2 => FlightStatus::Uncertain, // also, alert?
-        3 => FlightStatus::Ground,    // also, alert?
-        4 => FlightStatus::Uncertain, // also alert? spi?
-        5 => FlightStatus::Uncertain, // also spi?
-        _ => unreachable!("BUG: Unknown flight status {}", fs),
+        0 => FlightStatus {
+            alert: false,
+            spi: false,
+            status: AircraftStatus::Airborne,
+        },
+        1 => FlightStatus {
+            alert: false,
+            spi: false,
+            status: AircraftStatus::OnGround,
+        },
+        2 => FlightStatus {
+            alert: true,
+            spi: false,
+            status: AircraftStatus::Airborne,
+        },
+        3 => FlightStatus {
+            alert: true,
+            spi: false,
+            status: AircraftStatus::OnGround,
+        },
+        4 => FlightStatus {
+            alert: true,
+            spi: true,
+            status: AircraftStatus::Either,
+        },
+        5 => FlightStatus {
+            alert: false,
+            spi: true,
+            status: AircraftStatus::Either,
+        },
+        6 => unreachable!("FS=0b110 is reserved"),
+        7 => unreachable!("FS=0b111 is not assigned"),
+        _ => unreachable!("FS={} is larger than 3 bits", fs),
     }
 }
 
@@ -281,10 +327,10 @@ fn sensitivity_level(sl: u8) -> SensitivityLevel {
 }
 
 // VS
-fn vertical_status(vs: u8) -> FlightStatus {
+fn vertical_status(vs: u8) -> AircraftStatus {
     match vs {
-        0 => FlightStatus::Uncertain,
-        1 => FlightStatus::Ground,
+        0 => AircraftStatus::Either,
+        1 => AircraftStatus::OnGround,
         _ => unreachable!("Impossible vertical status {}", vs), // one bit field
     }
 }
