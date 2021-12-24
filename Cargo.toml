@@ -3,6 +3,10 @@ name = "adsb_exporter"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "adsb_exporter"
+path = "src/bin/adsb_exporter.rs"
+
 [dependencies]
 anyhow           = "^1.0"
 bytes            = "^1.0"
