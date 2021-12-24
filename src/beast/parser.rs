@@ -78,25 +78,19 @@ fn mode_s(timestamp: u32, signal_level: f64, input: &[u8]) -> IResult<&[u8], Mes
     dbg!(message_type);
 
     let data = match message_type {
-        0 => Message::ModeS(ModeS {
-            timestamp,
-            signal_level,
-            data: parse_df_0(input),
-        }),
-        5 => Message::ModeS(ModeS {
-            timestamp,
-            signal_level,
-            data: parse_df_5(input),
-        }),
-        8 => Message::ModeS(ModeS {
-            timestamp,
-            signal_level,
-            data: parse_df_8(input),
-        }),
+        0 => parse_df_0(input),
+        5 => parse_df_5(input),
+        8 => parse_df_8(input),
         _ => panic!("message type {} not supported", message_type),
     };
 
-    Ok((input, data))
+    let mode_s = Message::ModeS(ModeS {
+        timestamp,
+        signal_level,
+        data,
+    });
+
+    Ok((input, mode_s))
 }
 
 pub(crate) fn parse_df_0(input: &[u8]) -> Data {
