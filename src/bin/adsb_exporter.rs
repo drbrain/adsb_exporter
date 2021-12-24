@@ -53,4 +53,3 @@ async fn wait_for_error(mut error_rx: mpsc::Receiver<anyhow::Error>) -> i32 {
 
     1
 }
-

@@ -18,8 +18,8 @@ use reqwest::Client;
 
 use serde_json::Value;
 
-use std::time::Duration;
 use std::num::Wrapping;
+use std::time::Duration;
 
 use tokio::time::sleep;
 
