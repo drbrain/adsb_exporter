@@ -88,6 +88,11 @@ fn mode_s(timestamp: u32, signal_level: f64, input: &[u8]) -> IResult<&[u8], Mes
             signal_level,
             data: parse_df_5(input),
         }),
+        8 => Message::ModeS(ModeS {
+            timestamp,
+            signal_level,
+            data: parse_df_8(input),
+        }),
         _ => panic!("message type {} not supported", message_type),
     };
 
@@ -144,6 +149,9 @@ pub(crate) fn parse_df_5(input: &[u8]) -> Data {
     Data::SurveillanceReply(reply)
 }
 
+pub(crate) fn parse_df_8(input: &[u8]) -> Data {
+    Data::Unsupported(input.to_vec())
+}
 fn aa(input: &[u8], message_type: u8) -> Option<u32> {
     match message_type {
         11 | 17 | 18 => Some(input[1..3].iter().fold(0u32, |ts, c| (ts << 8) | *c as u32)),

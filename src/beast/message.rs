@@ -44,6 +44,7 @@ pub struct ModeS {
 pub enum Data {
     ACASSurveillanceReply(ACASSurveillanceReply),
     SurveillanceReply(SurveillanceReply),
+    Unsupported(Vec<u8>),
 }
 
 #[derive(Debug, PartialEq)]
