@@ -17,16 +17,31 @@ fn test_parse_mode_s_short() {
 
     let parser = Parser::new();
 
-    let (input, message) = parser.parse(&input).unwrap();
+    let (input, _message) = parser.parse(&input).unwrap();
 
     assert_eq!(0, input.len());
 }
 
 #[test]
+fn test_parse_df_0() {
+    let input = vec![0x02, 0x81, 0x83, 0x16, 0xf9, 0x21, 0x89];
+
+    let data = parse_df_0(&input);
+
+    let expected = Data::ACASSurveillanceReply(ACASSurveillanceReply {
+        vertical_status: FlightStatus::Uncertain,
+        cross_link: CrossLink::Supported,
+        sensitivity_level: SensitivityLevel::Operative(4),
+        reply_information: ReplyInformation::ACASVerticalOnly,
+        altitude: Altitude::Feet(3950),
+    });
+
+    assert_eq!(expected, data);
+}
+
+#[test]
 fn test_parse_df_5() {
     let input = vec![0x5d, 0xa1, 0x1b, 0x00, 0x44, 0xe9, 0x57];
-
-    let parser = Parser::new();
 
     let data = parse_df_5(&input);
 
