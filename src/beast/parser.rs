@@ -336,14 +336,10 @@ fn message(me: u64) -> ADSBMessage {
     use nom::bits::bits;
     use nom::bits::complete::take;
 
-    dbg!(me);
-
     let input = me.to_be_bytes();
 
     let (_, type_code) =
         bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(take(5usize))(&input[1..]).unwrap();
-
-    dbg!(type_code);
 
     match type_code {
         1..=4 => {
@@ -366,8 +362,8 @@ fn message(me: u64) -> ADSBMessage {
             })
         }
         5..=8 => unimplemented!("surface_position"),
-        9..=18 => unimplemented!("airborne_position"),
-        19 => unimplemented!("airborne_velocity"),
+        9..=18 => airborne_position(&input),
+        19 => velocity(&input),
         20..=22 => unimplemented!("airborne_position"),
         28 => unimplemented!("aircraft_status"),
         29 => unimplemented!("target_states"),
@@ -433,7 +429,45 @@ fn decode(pattern: [(u16, u16); 12], encoded: u16) -> u16 {
         .fold(0, |acc, v| acc | v)
 }
 
-// aircraft_category
+fn airborne_position(input: &[u8]) -> ADSBMessage {
+    use nom::bits::bits;
+    use nom::bits::complete::take;
+
+    let (_, message) = bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(map(
+        tuple((
+            preceded::<_, u8, _, _, _, _>(take(5usize), map(take(2usize), surveillance_status)),
+            map(take(1usize), |saf: u8| saf == 1),
+            map(take(12usize), altitude_code),
+            map(take(1usize), |t: u8| t == 1),
+            map(take(1usize), cpr_format),
+            take(17usize),
+            take(17usize),
+        )),
+        |(
+            surveillance_status,
+            single_antenna,
+            altitude,
+            utc_synchronized,
+            cpr_format,
+            cpr_latitude,
+            cpr_longitude,
+        )| {
+            ADSBMessage::AirbornePosition(AirbornePosition {
+                surveillance_status,
+                single_antenna,
+                altitude,
+                utc_synchronized,
+                cpr_format,
+                cpr_latitude,
+                cpr_longitude,
+            })
+        },
+    ))(&input[1..])
+    .unwrap();
+
+    message
+}
+
 fn aircraft_category(type_code: u8, category: u8) -> AircraftCategory {
     if 1 == type_code {
         unreachable!("reserved aircraft category for type code {}", type_code);
@@ -526,5 +560,113 @@ fn call_sign_character(c: u32) -> char {
         32 => ' ',
         48..=57 => char::from_u32(c).unwrap(),
         _ => unreachable!("invalid call sign character {}", c),
+    }
+}
+
+fn cpr_format(f: u8) -> CPRFormat {
+    match f {
+        0 => CPRFormat::Even,
+        1 => CPRFormat::Odd,
+        _ => unreachable!("invalid CPR format {}", f),
+    }
+}
+
+fn surveillance_status(ss: u8) -> SurveillanceStatus {
+    match ss {
+        0 => SurveillanceStatus::NoCondition,
+        1 => SurveillanceStatus::PermanentAlert,
+        2 => SurveillanceStatus::TemporaryAlert,
+        3 => SurveillanceStatus::SPICondition,
+        _ => unreachable!("impossible surveillance status {}", ss),
+    }
+}
+
+fn velocity(input: &[u8]) -> ADSBMessage {
+    use nom::bits::bits;
+    use nom::bits::complete::take;
+
+    bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(preceded::<_, u8, _, _, _, _>(
+        take(5usize),
+        map(
+            tuple((
+                take(3usize),
+                map(take(1usize), |ic: u8| ic == 1),
+                map(take(1usize), |ifr: u8| ifr == 1),
+                take(3usize),
+                take(22usize),
+                map(take(1usize), |vr_source: u8| match vr_source {
+                    0 => VerticalRateSource::GNSS,
+                    1 => VerticalRateSource::Barometer,
+                    _ => unreachable!("Impossible vertical rate source {}", vr_source),
+                }),
+                map(
+                    tuple((map(take(1usize), |vr_sign: u8| vr_sign == 1), take(9usize))),
+                    vertical_rate,
+                ),
+                map(
+                    tuple((
+                        preceded::<_, u8, _, _, _, _>(
+                            take(2usize),
+                            map(take(1usize), |diff_sign: u8| diff_sign == 1),
+                        ),
+                        take(7usize),
+                    )),
+                    altitude_difference,
+                ),
+            )),
+            |(
+                sub_type,
+                intent_change,
+                ifr_capability,
+                navigation_uncertainty,
+                velocity,
+                vertical_rate_source,
+                vertical_rate,
+                altitude_difference,
+            )| {
+                ADSBMessage::Velocity(Velocity::new(
+                    sub_type,
+                    intent_change,
+                    ifr_capability,
+                    navigation_uncertainty,
+                    velocity,
+                    vertical_rate_source,
+                    vertical_rate,
+                    altitude_difference,
+                ))
+            },
+        ),
+    ))(&input[1..])
+    .unwrap()
+    .1
+}
+
+fn altitude_difference(input: (bool, u8)) -> AltitudeDifference {
+    let below = input.0;
+    let difference: i16 = input.1.into();
+
+    let sign = match below {
+        true => -1,
+        false => 1,
+    };
+
+    match difference {
+        0 => AltitudeDifference::NoInformation,
+        _ => AltitudeDifference::Feet(sign * 25 * difference),
+    }
+}
+
+fn vertical_rate(input: (bool, u16)) -> VerticalRate {
+    let down = input.0;
+    let rate: i32 = input.1.into();
+
+    let sign = match down {
+        true => 1,
+        false => -1,
+    };
+
+    match rate {
+        0 => VerticalRate::NoInformation,
+        _ => VerticalRate::FeetPerMinute(sign * 64 * (rate - 1)),
     }
 }

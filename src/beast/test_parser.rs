@@ -94,9 +94,9 @@ fn test_parse_df_5() {
 }
 
 #[test]
-fn test_parse_df_17() {
+fn test_parse_df_17_tc_4() {
     let input = vec![
-        0x8d, 0xa6, 0xee, 0x47, 0x23, 0x05, 0x30, 0x76, 0xd7, 0x48, 0x20, 0x54, 0x47, 0x7b,
+        0x8d, 0xa6, 0xee, 0x47, 0x23, 0x05, 0x30, 0x76, 0xd7, 0x48, 0x20,
     ];
 
     let data = parse_df_17(&input);
@@ -107,6 +107,93 @@ fn test_parse_df_17() {
         message: ADSBMessage::AircraftIdentification(AircraftIdentification {
             category: AircraftCategory::Medium2,
             call_sign: "ASA654  ".to_string(),
+        }),
+    });
+
+    assert_eq!(expected, data);
+}
+
+#[test]
+fn test_parse_df_17_tc_11() {
+    let input = vec![
+        0x8d, 0xa4, 0x5f, 0xb1, 0x58, 0x0b, 0xc7, 0x26, 0x5d, 0x80, 0x06,
+    ];
+
+    let data = parse_df_17(&input);
+
+    let expected = Data::ExtendedSquitter(ExtendedSquitter {
+        capability: 5,
+        icao: "A45FB1".to_string(),
+        message: ADSBMessage::AirbornePosition(AirbornePosition {
+            surveillance_status: SurveillanceStatus::NoCondition,
+            single_antenna: false,
+            altitude: Altitude::Feet(500),
+            utc_synchronized: false,
+            cpr_format: CPRFormat::Odd,
+            cpr_latitude: 103214,
+            cpr_longitude: 98310,
+        }),
+    });
+
+    assert_eq!(expected, data);
+}
+
+#[test]
+fn test_parse_df_17_tc_19_st_1() {
+    let input = vec![
+        0x8d, 0xa8, 0x2d, 0xfb, 0x99, 0x10, 0x6b, 0xb2, 0x70, 0x54, 0x09,
+    ];
+
+    let data = parse_df_17(&input);
+
+    let expected = Data::ExtendedSquitter(ExtendedSquitter {
+        capability: 5,
+        icao: "A82DFB".to_string(),
+        message: ADSBMessage::Velocity(Velocity {
+            intent_change: false,
+            ifr_capability: false,
+            navigation_uncertainty: 2,
+            velocity: VelocityType::Ground(GroundVelocity {
+                supersonic_aircraft: false,
+                east_west_direction: EastWestDirection::WestToEast,
+                east_west_velocity: 107,
+                north_south_direction: NorthSouthDirection::NorthToSouth,
+                north_south_velocity: 403,
+            }),
+            vertical_rate_source: VerticalRateSource::Barometer,
+            vertical_rate: VerticalRate::FeetPerMinute(-1280),
+            altitude_difference: AltitudeDifference::Feet(225),
+        }),
+    });
+
+    assert_eq!(expected, data);
+}
+
+#[test]
+fn test_parse_df_17_tc_19_st_3() {
+    let input = vec![
+        0x8d, 0xa8, 0x2d, 0xfb, 0x9b, 0x06, 0x6b, 0xb2, 0x70, 0x85, 0x02,
+    ];
+
+    let data = parse_df_17(&input);
+
+    let expected = Data::ExtendedSquitter(ExtendedSquitter {
+        capability: 5,
+        icao: "A82DFB".to_string(),
+        message: ADSBMessage::Velocity(Velocity {
+            intent_change: false,
+            ifr_capability: false,
+            navigation_uncertainty: 0,
+            velocity: VelocityType::Airborne(Airspeed {
+                supersonic_aircraft: false,
+                magnetic_heading_available: true,
+                magnetic_heading: 619,
+                airspeed_type: AirspeedType::True,
+                airspeed: 403,
+            }),
+            vertical_rate_source: VerticalRateSource::Barometer,
+            vertical_rate: VerticalRate::FeetPerMinute(-2048),
+            altitude_difference: AltitudeDifference::Feet(50),
         }),
     });
 
