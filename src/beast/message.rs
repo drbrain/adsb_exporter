@@ -8,6 +8,38 @@ pub struct ACASSurveillanceReply {
 }
 
 #[derive(Debug, PartialEq)]
+pub enum ADSBMessage {
+    AircraftIdentification(AircraftIdentification),
+}
+
+#[derive(Debug, PartialEq)]
+pub enum AircraftCategory {
+    None,
+    SurfaceEmergencyVehicle,
+    SurfaceServiceVehicle,
+    GroundObstruction,
+    Glider,
+    LighterThanAir,
+    Parachutist,
+    Ultralight,
+    UnmannedAerialVehicle,
+    SpaceVehicle,
+    Light,
+    Medium1,
+    Medium2,
+    HighVortexAircraft,
+    Heavy,
+    HighPerformance,
+    Rotorcraft,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct AircraftIdentification {
+    pub category: AircraftCategory,
+    pub call_sign: String,
+}
+
+#[derive(Debug, PartialEq)]
 pub enum AircraftStatus {
     OnGround,
     Airborne,
@@ -42,25 +74,33 @@ pub struct FlightStatus {
     pub status: AircraftStatus,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
+pub enum Data {
+    ACASSurveillanceReply(ACASSurveillanceReply),
+    AltitudeReply(AltitudeReply),
+    ExtendedSquitter(ExtendedSquitter),
+    SurveillanceReply(SurveillanceReply),
+    Unsupported(Vec<u8>),
+}
+
+#[derive(Debug, PartialEq)]
+pub struct ExtendedSquitter {
+    pub capability: u8,
+    pub icao: String,
+    pub message: ADSBMessage,
+}
+
+#[derive(Debug, PartialEq)]
 pub enum Message {
     ModeS(ModeS),
     Unsupported(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ModeS {
     pub timestamp: u32,
     pub signal_level: f64,
     pub data: Data,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum Data {
-    ACASSurveillanceReply(ACASSurveillanceReply),
-    AltitudeReply(AltitudeReply),
-    SurveillanceReply(SurveillanceReply),
-    Unsupported(Vec<u8>),
 }
 
 #[derive(Debug, PartialEq)]

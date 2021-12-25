@@ -11,8 +11,8 @@ use crate::beast::*;
 #[test]
 fn test_parse_mode_s_short() {
     let input = vec![
-        0x1a, 0x32, 0x07, 0x94, 0xf8, 0x8e, 0x22, 0x26, 0x04, 0x5d, 0xa1, 0x1b, 0x00, 0x44, 0xe9,
-        0x57,
+        0x1a, 0x32, 0x07, 0x94, 0xf8, 0x8e, 0x22, 0x26, 0x04, 0x28, 0x00, 0x1b, 0x98, 0x03, 0x82,
+        0x0c,
     ];
 
     let parser = Parser::new();
@@ -62,13 +62,15 @@ fn test_parse_df_4() {
     let expected = Data::AltitudeReply(AltitudeReply {
         flight_status: FlightStatus {
             alert: false,
-            spi: true,
-            status: AircraftStatus::OnGround,
+            spi: false,
+            status: AircraftStatus::Airborne,
         },
-        downlink_request: 20,
-        utility_message: 8,
-        altitude: Altitude::Feet(0),
+        downlink_request: 0,
+        utility_message: 0,
+        altitude: Altitude::Feet(4775),
     });
+
+    assert_eq!(expected, data);
 }
 
 #[test]
@@ -86,6 +88,26 @@ fn test_parse_df_5() {
         downlink_request: 20,
         utility_message: 8,
         id: 12368,
+    });
+
+    assert_eq!(expected, data);
+}
+
+#[test]
+fn test_parse_df_17() {
+    let input = vec![
+        0x8d, 0xa6, 0xee, 0x47, 0x23, 0x05, 0x30, 0x76, 0xd7, 0x48, 0x20, 0x54, 0x47, 0x7b,
+    ];
+
+    let data = parse_df_17(&input);
+
+    let expected = Data::ExtendedSquitter(ExtendedSquitter {
+        capability: 5,
+        icao: "A6EE47".to_string(),
+        message: ADSBMessage::AircraftIdentification(AircraftIdentification {
+            category: AircraftCategory::Medium2,
+            call_sign: "ASA654  ".to_string(),
+        }),
     });
 
     assert_eq!(expected, data);

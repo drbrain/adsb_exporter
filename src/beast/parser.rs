@@ -79,6 +79,7 @@ fn mode_s(timestamp: u32, signal_level: f64, input: &[u8]) -> IResult<&[u8], Mes
         0 => parse_df_0(input),
         4 => parse_df_4(input),
         5 => parse_df_5(input),
+        17 => parse_df_17(input),
         _ => panic!("message type {} not supported", message_type),
     };
 
@@ -164,11 +165,30 @@ pub(crate) fn parse_df_5(input: &[u8]) -> Data {
     Data::SurveillanceReply(reply)
 }
 
-fn aa(input: &[u8], message_type: u8) -> Option<u32> {
-    match message_type {
-        11 | 17 | 18 => Some(input[1..3].iter().fold(0u32, |ts, c| (ts << 8) | *c as u32)),
-        _ => None,
-    }
+pub(crate) fn parse_df_17(input: &[u8]) -> Data {
+    use nom::bits::bits;
+    use nom::bits::complete::take;
+
+    let (_, message) = bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(map(
+        tuple((
+            preceded::<_, u8, _, _, _, _>(take(5usize), map(take(3usize), capability)),
+            map(take(24usize), address_announced),
+            map(take(56usize), message),
+        )),
+        |(capability, icao, message)| ExtendedSquitter {
+            capability,
+            icao,
+            message,
+        },
+    ))(input)
+    .unwrap();
+
+    Data::ExtendedSquitter(message)
+}
+
+// AA
+fn address_announced(aa: u32) -> String {
+    format!("{:X}", aa)
 }
 
 const ONES_PATTERN: [(u16, u16); 3] = [(0x10, 0x7), (0x20, 0x3), (0x40, 0x1)];
@@ -253,6 +273,11 @@ fn altitude_code(ac: u16) -> Altitude {
     }
 }
 
+// CA
+fn capability(ca: u8) -> u8 {
+    ca
+}
+
 // CC
 fn cross_link(cc: u8) -> CrossLink {
     match cc {
@@ -304,6 +329,51 @@ fn flight_status(fs: u8) -> FlightStatus {
 // ID
 fn ident(id: u16) -> u16 {
     decode(ID_PATTERN, id)
+}
+
+// ME
+fn message(me: u64) -> ADSBMessage {
+    use nom::bits::bits;
+    use nom::bits::complete::take;
+
+    dbg!(me);
+
+    let input = me.to_be_bytes();
+
+    let (_, type_code) =
+        bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(take(5usize))(&input[1..]).unwrap();
+
+    dbg!(type_code);
+
+    match type_code {
+        1..=4 => {
+            let (_, category) =
+                bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(
+                    preceded::<_, u8, _, _, _, _>(
+                        take(5usize),
+                        map(take(3usize), |category| {
+                            aircraft_category(type_code, category)
+                        }),
+                    ),
+                )(&input[1..])
+                .unwrap();
+
+            let call_sign = aircraft_identification(&input[2..]);
+
+            ADSBMessage::AircraftIdentification(AircraftIdentification {
+                category,
+                call_sign,
+            })
+        }
+        5..=8 => unimplemented!("surface_position"),
+        9..=18 => unimplemented!("airborne_position"),
+        19 => unimplemented!("airborne_velocity"),
+        20..=22 => unimplemented!("airborne_position"),
+        28 => unimplemented!("aircraft_status"),
+        29 => unimplemented!("target_states"),
+        31 => unimplemented!("operational_status"),
+        _ => unreachable!("Unsupported type code {}", type_code),
+    }
 }
 
 // RI
@@ -361,4 +431,100 @@ fn decode(pattern: [(u16, u16); 12], encoded: u16) -> u16 {
             }
         })
         .fold(0, |acc, v| acc | v)
+}
+
+// aircraft_category
+fn aircraft_category(type_code: u8, category: u8) -> AircraftCategory {
+    if 1 == type_code {
+        unreachable!("reserved aircraft category for type code {}", type_code);
+    }
+
+    if 0 == category {
+        return AircraftCategory::None;
+    }
+
+    match type_code {
+        2 => match category {
+            1 => AircraftCategory::SurfaceEmergencyVehicle,
+            3 => AircraftCategory::SurfaceServiceVehicle,
+            4..=7 => AircraftCategory::GroundObstruction,
+            _ => unreachable!(
+                "unknown aircraft category {} for type code {}",
+                category, type_code
+            ),
+        },
+        3 => match category {
+            1 => AircraftCategory::Glider,
+            2 => AircraftCategory::LighterThanAir,
+            3 => AircraftCategory::Parachutist,
+            4 => AircraftCategory::Ultralight,
+            5 => unreachable!(
+                "reserved aircraft category {} for type code {}",
+                category, type_code
+            ),
+            6 => AircraftCategory::UnmannedAerialVehicle,
+            7 => AircraftCategory::SpaceVehicle,
+            _ => unreachable!(
+                "impossible aircraft category {} for type code {}",
+                category, type_code
+            ),
+        },
+        4 => match category {
+            1 => AircraftCategory::Light,
+            2 => AircraftCategory::Medium1,
+            3 => AircraftCategory::Medium2,
+            4 => AircraftCategory::HighVortexAircraft,
+            5 => AircraftCategory::Heavy,
+            6 => AircraftCategory::HighPerformance,
+            7 => AircraftCategory::Rotorcraft,
+            _ => unreachable!(
+                "impossible aircraft category {} for type code {}",
+                category, type_code
+            ),
+        },
+        _ => unreachable!("impossible type code {}", type_code),
+    }
+}
+
+// aircraft_identification
+fn aircraft_identification(id: &[u8]) -> String {
+    use nom::bits::bits;
+    use nom::bits::complete::take;
+
+    let (_, call_sign) = bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(map(
+        tuple((
+            map(take(6usize), call_sign_character),
+            map(take(6usize), call_sign_character),
+            map(take(6usize), call_sign_character),
+            map(take(6usize), call_sign_character),
+            map(take(6usize), call_sign_character),
+            map(take(6usize), call_sign_character),
+            map(take(6usize), call_sign_character),
+            map(take(6usize), call_sign_character),
+        )),
+        |(c0, c1, c2, c3, c4, c5, c6, c7)| {
+            let mut call_sign = String::with_capacity(8);
+            call_sign.push(c0);
+            call_sign.push(c1);
+            call_sign.push(c2);
+            call_sign.push(c3);
+            call_sign.push(c4);
+            call_sign.push(c5);
+            call_sign.push(c6);
+            call_sign.push(c7);
+            call_sign
+        },
+    ))(id)
+    .unwrap();
+
+    call_sign
+}
+
+fn call_sign_character(c: u32) -> char {
+    match c {
+        1..=26 => char::from_u32(c + 64).unwrap(),
+        32 => ' ',
+        48..=57 => char::from_u32(c).unwrap(),
+        _ => unreachable!("invalid call sign character {}", c),
+    }
 }
