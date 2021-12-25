@@ -342,25 +342,7 @@ fn message(me: u64) -> ADSBMessage {
         bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(take(5usize))(&input[1..]).unwrap();
 
     match type_code {
-        1..=4 => {
-            let (_, category) =
-                bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(
-                    preceded::<_, u8, _, _, _, _>(
-                        take(5usize),
-                        map(take(3usize), |category| {
-                            aircraft_category(type_code, category)
-                        }),
-                    ),
-                )(&input[1..])
-                .unwrap();
-
-            let call_sign = aircraft_identification(&input[2..]);
-
-            ADSBMessage::AircraftIdentification(AircraftIdentification {
-                category,
-                call_sign,
-            })
-        }
+        1..=4 => aircraft_identification(&input, type_code),
         5..=8 => unimplemented!("surface_position"),
         9..=18 => airborne_position(&input),
         19 => velocity(&input),
@@ -468,6 +450,54 @@ fn airborne_position(input: &[u8]) -> ADSBMessage {
     message
 }
 
+fn aircraft_identification(input: &[u8], type_code: u8) -> ADSBMessage {
+    use nom::bits::bits;
+    use nom::bits::complete::take;
+
+    bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(preceded::<_, u16, _, _, _, _>(
+        take(13usize),
+        map(
+            tuple((
+                map(take(3usize), |category| {
+                    aircraft_category(type_code, category)
+                }),
+                map(
+                    tuple((
+                        map(take(6usize), call_sign_character),
+                        map(take(6usize), call_sign_character),
+                        map(take(6usize), call_sign_character),
+                        map(take(6usize), call_sign_character),
+                        map(take(6usize), call_sign_character),
+                        map(take(6usize), call_sign_character),
+                        map(take(6usize), call_sign_character),
+                        map(take(6usize), call_sign_character),
+                    )),
+                    |(c0, c1, c2, c3, c4, c5, c6, c7)| {
+                        let mut call_sign = String::with_capacity(8);
+                        call_sign.push(c0);
+                        call_sign.push(c1);
+                        call_sign.push(c2);
+                        call_sign.push(c3);
+                        call_sign.push(c4);
+                        call_sign.push(c5);
+                        call_sign.push(c6);
+                        call_sign.push(c7);
+                        call_sign
+                    },
+                ),
+            )),
+            |(category, call_sign)| {
+                ADSBMessage::AircraftIdentification(AircraftIdentification {
+                    category,
+                    call_sign,
+                })
+            },
+        ),
+    ))(&input)
+    .unwrap()
+    .1
+}
+
 fn aircraft_status(input: &[u8]) -> ADSBMessage {
     use nom::bits::bits;
     use nom::bits::complete::take;
@@ -535,40 +565,6 @@ fn aircraft_category(type_code: u8, category: u8) -> AircraftCategory {
         },
         _ => unreachable!("impossible type code {}", type_code),
     }
-}
-
-// aircraft_identification
-fn aircraft_identification(id: &[u8]) -> String {
-    use nom::bits::bits;
-    use nom::bits::complete::take;
-
-    let (_, call_sign) = bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(map(
-        tuple((
-            map(take(6usize), call_sign_character),
-            map(take(6usize), call_sign_character),
-            map(take(6usize), call_sign_character),
-            map(take(6usize), call_sign_character),
-            map(take(6usize), call_sign_character),
-            map(take(6usize), call_sign_character),
-            map(take(6usize), call_sign_character),
-            map(take(6usize), call_sign_character),
-        )),
-        |(c0, c1, c2, c3, c4, c5, c6, c7)| {
-            let mut call_sign = String::with_capacity(8);
-            call_sign.push(c0);
-            call_sign.push(c1);
-            call_sign.push(c2);
-            call_sign.push(c3);
-            call_sign.push(c4);
-            call_sign.push(c5);
-            call_sign.push(c6);
-            call_sign.push(c7);
-            call_sign
-        },
-    ))(id)
-    .unwrap();
-
-    call_sign
 }
 
 fn call_sign_character(c: u32) -> char {
