@@ -73,7 +73,7 @@ fn mode_s(timestamp: u32, signal_level: f64, input: &[u8]) -> IResult<&[u8], Mes
     use nom::bits::complete::take;
 
     let (_, message_type): (_, u8) =
-        bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(take(4usize))(input).unwrap();
+        bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(take(5usize))(input).unwrap();
 
     let data = match message_type {
         0 => parse_df_0(input),
