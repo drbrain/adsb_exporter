@@ -4,7 +4,7 @@ use nom::sequence::*;
 
 #[derive(Debug, PartialEq)]
 pub struct ACASSurveillanceReply {
-    pub vertical_status: AircraftStatus,
+    pub vertical_status: VerticalStatus,
     pub cross_link: CrossLink,
     pub sensitivity_level: SensitivityLevel,
     pub reply_information: ReplyInformation,
@@ -14,6 +14,7 @@ pub struct ACASSurveillanceReply {
 #[derive(Debug, PartialEq)]
 pub enum ADSBMessage {
     AircraftIdentification(AircraftIdentification),
+    AircraftStatus(AircraftStatus),
     AirbornePosition(AirbornePosition),
     Velocity(Velocity),
 }
@@ -51,16 +52,39 @@ pub enum AircraftCategory {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct AircraftIdentification {
-    pub category: AircraftCategory,
-    pub call_sign: String,
+pub struct AircraftStatus {
+    pub emergency: Emergency,
+    pub squawk: u16,
+}
+
+impl AircraftStatus {
+    pub fn new(sub_type: u8, emergency: u8, squawk: u16) -> AircraftStatus {
+        use log::debug;
+        debug!("sub_type: {} emergency: {}", sub_type, emergency);
+        eprintln!();
+        let emergency = match sub_type {
+            0 => Emergency::NoInformation,
+            1 => match emergency {
+                0 => Emergency::None,
+                1 => Emergency::General,
+                2 => Emergency::Lifeguard,
+                3 => Emergency::MinimumFuel,
+                4 => Emergency::NoCommunications,
+                5 => Emergency::UnlawfulInterference,
+                6 => Emergency::Downed,
+                _ => unreachable!("impossible emergency {}", emergency),
+            },
+            _ => unreachable!("impossible aircraft status sub-type {}", sub_type),
+        };
+
+        AircraftStatus { emergency, squawk }
+    }
 }
 
 #[derive(Debug, PartialEq)]
-pub enum AircraftStatus {
-    OnGround,
-    Airborne,
-    Either,
+pub struct AircraftIdentification {
+    pub category: AircraftCategory,
+    pub call_sign: String,
 }
 
 #[derive(Debug, PartialEq)]
@@ -127,6 +151,18 @@ pub enum EastWestDirection {
 }
 
 #[derive(Debug, PartialEq)]
+pub enum Emergency {
+    NoInformation,
+    None,
+    General,
+    Lifeguard,
+    MinimumFuel,
+    NoCommunications,
+    UnlawfulInterference,
+    Downed,
+}
+
+#[derive(Debug, PartialEq)]
 pub struct ExtendedSquitter {
     pub capability: u8,
     pub icao: String,
@@ -137,7 +173,7 @@ pub struct ExtendedSquitter {
 pub struct FlightStatus {
     pub alert: bool,
     pub spi: bool,
-    pub status: AircraftStatus,
+    pub status: VerticalStatus,
 }
 
 #[derive(Debug, PartialEq)]
@@ -339,4 +375,11 @@ pub enum VerticalRate {
 pub enum VerticalRateSource {
     GNSS,
     Barometer,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum VerticalStatus {
+    Ground,
+    Airborne,
+    Either,
 }

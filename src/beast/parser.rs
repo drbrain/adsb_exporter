@@ -293,32 +293,32 @@ fn flight_status(fs: u8) -> FlightStatus {
         0 => FlightStatus {
             alert: false,
             spi: false,
-            status: AircraftStatus::Airborne,
+            status: VerticalStatus::Airborne,
         },
         1 => FlightStatus {
             alert: false,
             spi: false,
-            status: AircraftStatus::OnGround,
+            status: VerticalStatus::Ground,
         },
         2 => FlightStatus {
             alert: true,
             spi: false,
-            status: AircraftStatus::Airborne,
+            status: VerticalStatus::Airborne,
         },
         3 => FlightStatus {
             alert: true,
             spi: false,
-            status: AircraftStatus::OnGround,
+            status: VerticalStatus::Ground,
         },
         4 => FlightStatus {
             alert: true,
             spi: true,
-            status: AircraftStatus::Either,
+            status: VerticalStatus::Either,
         },
         5 => FlightStatus {
             alert: false,
             spi: true,
-            status: AircraftStatus::Either,
+            status: VerticalStatus::Either,
         },
         6 => unreachable!("FS=0b110 is reserved"),
         7 => unreachable!("FS=0b111 is not assigned"),
@@ -365,7 +365,7 @@ fn message(me: u64) -> ADSBMessage {
         9..=18 => airborne_position(&input),
         19 => velocity(&input),
         20..=22 => unimplemented!("airborne_position"),
-        28 => unimplemented!("aircraft_status"),
+        28 => aircraft_status(&input),
         29 => unimplemented!("target_states"),
         31 => unimplemented!("operational_status"),
         _ => unreachable!("Unsupported type code {}", type_code),
@@ -393,10 +393,10 @@ fn sensitivity_level(sl: u8) -> SensitivityLevel {
 }
 
 // VS
-fn vertical_status(vs: u8) -> AircraftStatus {
+fn vertical_status(vs: u8) -> VerticalStatus {
     match vs {
-        0 => AircraftStatus::Either,
-        1 => AircraftStatus::OnGround,
+        0 => VerticalStatus::Either,
+        1 => VerticalStatus::Ground,
         _ => unreachable!("Impossible vertical status {}", vs), // one bit field
     }
 }
@@ -466,6 +466,23 @@ fn airborne_position(input: &[u8]) -> ADSBMessage {
     .unwrap();
 
     message
+}
+
+fn aircraft_status(input: &[u8]) -> ADSBMessage {
+    use nom::bits::bits;
+    use nom::bits::complete::take;
+
+    bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(preceded::<_, u16, _, _, _, _>(
+        take(13usize),
+        map(
+            tuple((take(3usize), take(3usize), map(take(13usize), ident))),
+            |(sub_type, emergency, squawk)| {
+                ADSBMessage::AircraftStatus(AircraftStatus::new(sub_type, emergency, squawk))
+            },
+        ),
+    ))(&input)
+    .unwrap()
+    .1
 }
 
 fn aircraft_category(type_code: u8, category: u8) -> AircraftCategory {

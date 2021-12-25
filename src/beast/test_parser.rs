@@ -43,7 +43,7 @@ fn test_parse_df_0() {
     let data = parse_df_0(&input);
 
     let expected = Data::ACASSurveillanceReply(ACASSurveillanceReply {
-        vertical_status: AircraftStatus::Either,
+        vertical_status: VerticalStatus::Either,
         cross_link: CrossLink::Supported,
         sensitivity_level: SensitivityLevel::Operative(4),
         reply_information: ReplyInformation::ACASVerticalOnly,
@@ -63,7 +63,7 @@ fn test_parse_df_4() {
         flight_status: FlightStatus {
             alert: false,
             spi: false,
-            status: AircraftStatus::Airborne,
+            status: VerticalStatus::Airborne,
         },
         downlink_request: 0,
         utility_message: 0,
@@ -83,7 +83,7 @@ fn test_parse_df_5() {
         flight_status: FlightStatus {
             alert: false,
             spi: true,
-            status: AircraftStatus::Either,
+            status: VerticalStatus::Either,
         },
         downlink_request: 20,
         utility_message: 8,
@@ -194,6 +194,26 @@ fn test_parse_df_17_tc_19_st_3() {
             vertical_rate_source: VerticalRateSource::Barometer,
             vertical_rate: VerticalRate::FeetPerMinute(-2048),
             altitude_difference: AltitudeDifference::Feet(50),
+        }),
+    });
+
+    assert_eq!(expected, data);
+}
+
+#[test]
+fn test_parse_df_17_tc_28() {
+    let input = vec![
+        0x8d, 0xa5, 0x7d, 0x52, 0xe1, 0x1f, 0xa8, 0x00, 0x00, 0x00, 0x00,
+    ];
+
+    let data = parse_df_17(&input);
+
+    let expected = Data::ExtendedSquitter(ExtendedSquitter {
+        capability: 5,
+        icao: "A57D52".to_string(),
+        message: ADSBMessage::AircraftStatus(AircraftStatus {
+            emergency: Emergency::None,
+            squawk: 29552,
         }),
     });
 
