@@ -6,6 +6,7 @@ use nom::branch::*;
 use nom::bytes::streaming::*;
 use nom::combinator::*;
 use nom::error::*;
+use nom::multi::*;
 use nom::sequence::*;
 use nom::IResult;
 
@@ -29,11 +30,11 @@ impl Parser {
 }
 
 fn parse<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Message, E> {
-    let (input, _) = tag(b"\x1a")(input)?;
+    let (input, _) = many1(tag(b"\x1a"))(input)?;
 
     let (input, message_format) = take(1usize)(input)?;
     debug!(
-        "message_format: {}",
+        "message_format: {:?}",
         std::str::from_utf8(message_format).unwrap()
     );
 
