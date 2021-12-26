@@ -1,11 +1,18 @@
 [package]
 name = "adsb_exporter"
+authors = ["Eric Hodel"]
+repository = "https://github.com/drbrain/adsb_exporter"
 version = "0.1.0"
 edition = "2021"
+default-run = "adsb_exporter"
 
 [[bin]]
 name = "adsb_exporter"
 path = "src/bin/adsb_exporter.rs"
+
+[[bin]]
+name = "dump_beast"
+path = "src/bin/dump_beast.rs"
 
 [dependencies]
 anyhow           = "^1.0"

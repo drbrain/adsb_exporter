@@ -6,6 +6,7 @@ mod parser;
 
 pub use aircraft::Aircraft;
 pub use client::Client;
+pub use codec::Codec;
 pub use message::*;
 pub use parser::Parser;
 
