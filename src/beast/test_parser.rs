@@ -94,6 +94,23 @@ fn test_parse_df_5() {
 }
 
 #[test]
+fn test_parse_df_17_tc_unsupported() {
+    let input = vec![
+        0x8d, 0xa6, 0xee, 0x47, 0xf8, 0x23, 0x00, 0x02, 0x00, 0x49, 0xb8,
+    ];
+
+    let data = parse_df_17(&input);
+
+    let expected = Data::ExtendedSquitter(ExtendedSquitter {
+        capability: 5,
+        icao: "A6EE47".to_string(),
+        message: ADSBMessage::Unsupported(vec![0xf8, 0x23, 0x00, 0x02, 0x00, 0x49, 0xb8]),
+    });
+
+    assert_eq!(expected, data);
+}
+
+#[test]
 fn test_parse_df_17_tc_4() {
     let input = vec![
         0x8d, 0xa6, 0xee, 0x47, 0x23, 0x05, 0x30, 0x76, 0xd7, 0x48, 0x20,

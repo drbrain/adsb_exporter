@@ -18,6 +18,7 @@ pub enum ADSBMessage {
     AirbornePosition(AirbornePosition),
     TargetState(TargetStateType),
     Velocity(Velocity),
+    Unsupported(Vec<u8>),
 }
 
 #[derive(Debug, PartialEq)]

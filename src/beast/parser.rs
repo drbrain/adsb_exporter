@@ -344,14 +344,14 @@ fn message(me: u64) -> ADSBMessage {
 
     match type_code {
         1..=4 => aircraft_identification(&input, type_code),
-        5..=8 => unimplemented!("surface_position"),
+        //5..=8 => unimplemented!("surface_position"),
         9..=18 => airborne_position(&input),
         19 => velocity(&input),
-        20..=22 => unimplemented!("airborne_position"),
+        //20..=22 => unimplemented!("airborne_position"),
         28 => aircraft_status(&input),
         29 => target_state(&input),
-        31 => unimplemented!("operational_status"),
-        _ => unreachable!("Unsupported type code {}", type_code),
+        //31 => unimplemented!("operational_status"),
+        _ => ADSBMessage::Unsupported(input[1..].to_vec()),
     }
 }
 
