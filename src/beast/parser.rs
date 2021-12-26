@@ -338,9 +338,10 @@ fn message(me: u64) -> ADSBMessage {
     use nom::bits::complete::take;
 
     let input = me.to_be_bytes();
+    let input = &input[1..];
 
     let (_, type_code) =
-        bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(take(5usize))(&input[1..]).unwrap();
+        bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(take(5usize))(&input).unwrap();
 
     match type_code {
         1..=4 => aircraft_identification(&input, type_code),
@@ -351,7 +352,7 @@ fn message(me: u64) -> ADSBMessage {
         28 => aircraft_status(&input),
         29 => target_state(&input),
         //31 => unimplemented!("operational_status"),
-        _ => ADSBMessage::Unsupported(input[1..].to_vec()),
+        _ => ADSBMessage::Unsupported(input.to_vec()),
     }
 }
 
@@ -445,7 +446,7 @@ fn airborne_position(input: &[u8]) -> ADSBMessage {
                 cpr_longitude,
             })
         },
-    ))(&input[1..])
+    ))(&input)
     .unwrap();
 
     message
@@ -455,8 +456,8 @@ fn aircraft_identification(input: &[u8], type_code: u8) -> ADSBMessage {
     use nom::bits::bits;
     use nom::bits::complete::take;
 
-    bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(preceded::<_, u16, _, _, _, _>(
-        take(13usize),
+    bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(preceded::<_, u8, _, _, _, _>(
+        take(5usize),
         map(
             tuple((
                 map(take(3usize), |category| {
@@ -503,8 +504,8 @@ fn aircraft_status(input: &[u8]) -> ADSBMessage {
     use nom::bits::bits;
     use nom::bits::complete::take;
 
-    bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(preceded::<_, u16, _, _, _, _>(
-        take(13usize),
+    bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(preceded::<_, u8, _, _, _, _>(
+        take(5usize),
         map(
             tuple((take(3usize), take(3usize), map(take(13usize), ident))),
             |(sub_type, emergency, squawk)| {
@@ -600,8 +601,8 @@ fn target_state(input: &[u8]) -> ADSBMessage {
     use nom::bits::complete::tag;
     use nom::bits::complete::take;
 
-    bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(preceded::<_, u16, _, _, _, _>(
-        take(13usize),
+    bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(preceded::<_, u8, _, _, _, _>(
+        take(5usize),
         map(
             alt((
                 preceded::<_, u8, _, _, _, _>(
@@ -844,7 +845,7 @@ fn velocity(input: &[u8]) -> ADSBMessage {
                 ))
             },
         ),
-    ))(&input[1..])
+    ))(&input)
     .unwrap()
     .1
 }
