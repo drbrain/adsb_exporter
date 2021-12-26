@@ -32,10 +32,10 @@ lazy_static! {
     .unwrap();
 }
 
-pub async fn fetch(client: &Client, url: &String) -> Option<Value> {
+pub async fn fetch(client: &Client, url: &str) -> Option<Value> {
     debug!("Fetching {}", url);
-    REQUESTS.with_label_values(&[&url]).inc();
-    let timer = DURATIONS.with_label_values(&[&url]).start_timer();
+    REQUESTS.with_label_values(&[url]).inc();
+    let timer = DURATIONS.with_label_values(&[url]).start_timer();
 
     let response = client.get(url).send().await;
 
@@ -45,7 +45,7 @@ pub async fn fetch(client: &Client, url: &String) -> Option<Value> {
         Ok(r) => r,
         Err(e) => {
             debug!("request error: {:?}", e);
-            ERRORS.with_label_values(&[&url, "request"]).inc();
+            ERRORS.with_label_values(&[url, "request"]).inc();
             return None;
         }
     };
@@ -54,7 +54,7 @@ pub async fn fetch(client: &Client, url: &String) -> Option<Value> {
         Ok(t) => t,
         Err(e) => {
             debug!("Response body error from {}: {:?}", url, e);
-            ERRORS.with_label_values(&[&url, "text"]).inc();
+            ERRORS.with_label_values(&[url, "text"]).inc();
             return None;
         }
     };
@@ -63,7 +63,7 @@ pub async fn fetch(client: &Client, url: &String) -> Option<Value> {
         Ok(j) => Some(j),
         Err(e) => {
             debug!("JSON parsing error from {}: {:?}", url, e);
-            ERRORS.with_label_values(&[&url, "json"]).inc();
+            ERRORS.with_label_values(&[url, "json"]).inc();
             None
         }
     }

@@ -177,8 +177,7 @@ fn test_parse_df_17_tc_19_st_1() {
                 north_south_direction: NorthSouthDirection::NorthToSouth,
                 north_south_velocity: 403,
             }),
-            vertical_rate_source: VerticalRateSource::Barometer,
-            vertical_rate: VerticalRate::FeetPerMinute(-1280),
+            vertical_rate: VerticalRate::FeetPerMinute(VerticalRateSource::Barometer(1280)),
             altitude_difference: AltitudeDifference::Feet(225),
         }),
     });
@@ -208,8 +207,7 @@ fn test_parse_df_17_tc_19_st_3() {
                 airspeed_type: AirspeedType::True,
                 airspeed: 403,
             }),
-            vertical_rate_source: VerticalRateSource::Barometer,
-            vertical_rate: VerticalRate::FeetPerMinute(-2048),
+            vertical_rate: VerticalRate::FeetPerMinute(VerticalRateSource::Barometer(2048)),
             altitude_difference: AltitudeDifference::Feet(50),
         }),
     });

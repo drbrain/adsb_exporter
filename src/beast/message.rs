@@ -309,7 +309,6 @@ pub struct Velocity {
     pub ifr_capability: bool,
     pub navigation_uncertainty: u8, // TODO
     pub velocity: VelocityType,
-    pub vertical_rate_source: VerticalRateSource,
     pub vertical_rate: VerticalRate,
     pub altitude_difference: AltitudeDifference,
 }
@@ -321,7 +320,6 @@ impl Velocity {
         ifr_capability: bool,
         navigation_uncertainty: u8,
         velocity: u32,
-        vertical_rate_source: VerticalRateSource,
         vertical_rate: VerticalRate,
         altitude_difference: AltitudeDifference,
     ) -> Velocity {
@@ -338,7 +336,6 @@ impl Velocity {
             ifr_capability,
             navigation_uncertainty,
             velocity,
-            vertical_rate_source,
             vertical_rate,
             altitude_difference,
         }
@@ -437,13 +434,14 @@ pub enum VelocityType {
 #[derive(Debug, PartialEq)]
 pub enum VerticalRate {
     NoInformation,
-    FeetPerMinute(i32),
+    FeetPerMinute(VerticalRateSource),
 }
 
+/// Vertical rate in feet per minute
 #[derive(Debug, PartialEq)]
 pub enum VerticalRateSource {
-    GNSS,
-    Barometer,
+    GNSS(i32),
+    Barometer(i32),
 }
 
 #[derive(Debug, PartialEq)]

@@ -35,31 +35,31 @@ lazy_static! {
     static ref RECENT_OBSERVED: GaugeVec = register_gauge_vec!(
         "adsb_aircraft_observed_recent",
         "Number of aircraft observed in the last minute",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref RECENT_POSITIONS: GaugeVec = register_gauge_vec!(
         "adsb_aircraft_with_position_recent",
         "Number of aircraft observed with a position in the last minute",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref RECENT_MLAT: GaugeVec = register_gauge_vec!(
         "adsb_aircraft_mlat_recent",
         "Number of aircraft observed with a position determined by multilateration in the last minute",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref OBSERVATIONS: IntGaugeVec = register_int_gauge_vec!(
         "adsb_aircraft_observations_recent",
         "Number of aircraft positions observed by range and bearing in the last minute",
-        &[&"frequency", &"bearing", &"distance"],
+        &["frequency", "bearing", "distance"],
     )
     .unwrap();
     static ref RANGES: GaugeVec = register_gauge_vec!(
         "adsb_aircraft_ranges_recent",
         "Maximum range to an observed aircraft by bearing in the last minute",
-        &[&"frequency", &"bearing"],
+        &["frequency", "bearing"],
     )
     .unwrap();
 }
@@ -171,7 +171,7 @@ impl AircraftJson {
 
         let receiver_position = self.position.read().await;
         let receiver_position = match *receiver_position {
-            Some(position) => position.clone(),
+            Some(position) => position,
             None => {
                 info!(
                     "Receiver for {}Hz position unknown, maybe receiver.json hasn't been fetched?",
@@ -238,7 +238,7 @@ impl AircraftJson {
             .iter()
             .for_each(|((distance, bearing), count)| {
                 OBSERVATIONS
-                    .with_label_values(&[&self.frequency, &bearing, &distance])
+                    .with_label_values(&[&self.frequency, bearing, distance])
                     .set(*count)
             });
 
@@ -255,7 +255,7 @@ impl AircraftJson {
                 )
             {
                 RANGES
-                    .with_label_values(&[&self.frequency, &bearing])
+                    .with_label_values(&[&self.frequency, bearing])
                     .set(*maximum)
             }
         });

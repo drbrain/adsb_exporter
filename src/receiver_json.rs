@@ -26,13 +26,13 @@ lazy_static! {
     static ref VERSION: GaugeVec = register_gauge_vec!(
         "adsb_receiver_version_info",
         "Version of the receiver software",
-        &[&"frequency", "version"],
+        &["frequency", "version"],
     )
     .unwrap();
     static ref POSITION: GaugeVec = register_gauge_vec!(
         "adsb_receiver_position_info",
         "Position of the receiver",
-        &[&"frequency", &"latitude", &"longitude"],
+        &["frequency", "latitude", "longitude"],
     )
     .unwrap();
 }

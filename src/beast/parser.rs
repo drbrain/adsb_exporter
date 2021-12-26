@@ -15,6 +15,7 @@ const MODE_AC_LENGTH: usize = 2;
 const MODE_S_SHORT_LENGTH: usize = 7;
 const MODE_S_LONG_LENGTH: usize = 14;
 
+#[derive(Default)]
 pub struct Parser {}
 
 impl Parser {
@@ -33,7 +34,7 @@ fn parse<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Mess
     let (input, message_format) = take(1usize)(input)?;
     debug!(
         "message_format: {}",
-        std::str::from_utf8(&message_format).unwrap()
+        std::str::from_utf8(message_format).unwrap()
     );
 
     let message_length = match message_format {
@@ -341,16 +342,16 @@ fn message(me: u64) -> ADSBMessage {
     let input = &input[1..];
 
     let (_, type_code) =
-        bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(take(5usize))(&input).unwrap();
+        bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(take(5usize))(input).unwrap();
 
     match type_code {
-        1..=4 => aircraft_identification(&input, type_code),
+        1..=4 => aircraft_identification(input, type_code),
         //5..=8 => unimplemented!("surface_position"),
-        9..=18 => airborne_position(&input),
-        19 => velocity(&input),
+        9..=18 => airborne_position(input),
+        19 => velocity(input),
         //20..=22 => unimplemented!("airborne_position"),
-        28 => aircraft_status(&input),
-        29 => target_state(&input),
+        28 => aircraft_status(input),
+        29 => target_state(input),
         //31 => unimplemented!("operational_status"),
         _ => ADSBMessage::Unsupported(input.to_vec()),
     }
@@ -446,7 +447,7 @@ fn airborne_position(input: &[u8]) -> ADSBMessage {
                 cpr_longitude,
             })
         },
-    ))(&input)
+    ))(input)
     .unwrap();
 
     message
@@ -495,7 +496,7 @@ fn aircraft_identification(input: &[u8], type_code: u8) -> ADSBMessage {
                 })
             },
         ),
-    ))(&input)
+    ))(input)
     .unwrap()
     .1
 }
@@ -512,7 +513,7 @@ fn aircraft_status(input: &[u8]) -> ADSBMessage {
                 ADSBMessage::AircraftStatus(AircraftStatus::new(sub_type, emergency, squawk))
             },
         ),
-    ))(&input)
+    ))(input)
     .unwrap()
     .1
 }
@@ -732,7 +733,7 @@ fn target_state(input: &[u8]) -> ADSBMessage {
                     ),
                 ),
             )),
-            |target_state| ADSBMessage::TargetState(target_state),
+            ADSBMessage::TargetState,
         ),
     ))(input)
     .unwrap()
@@ -798,21 +799,22 @@ fn velocity(input: &[u8]) -> ADSBMessage {
         take(5usize),
         map(
             tuple((
-                take(3usize),
+                take(3usize), // sub_type
                 map(take(1usize), |ic: u8| ic == 1),
                 map(take(1usize), |ifr: u8| ifr == 1),
-                take(3usize),
-                take(22usize),
-                map(take(1usize), |vr_source: u8| match vr_source {
-                    0 => VerticalRateSource::GNSS,
-                    1 => VerticalRateSource::Barometer,
-                    _ => unreachable!("Impossible vertical rate source {}", vr_source),
-                }),
+                take(3usize),  // navigation uncertainty
+                take(22usize), // velocity
                 map(
-                    tuple((map(take(1usize), |vr_sign: u8| vr_sign == 1), take(9usize))),
+                    // vertical rate
+                    tuple((
+                        take(1usize),
+                        map(take(1usize), |vr_sign: u8| vr_sign == 1),
+                        take(9usize),
+                    )),
                     vertical_rate,
                 ),
                 map(
+                    // altitude difference
                     tuple((
                         preceded::<_, u8, _, _, _, _>(
                             take(2usize),
@@ -829,7 +831,6 @@ fn velocity(input: &[u8]) -> ADSBMessage {
                 ifr_capability,
                 navigation_uncertainty,
                 velocity,
-                vertical_rate_source,
                 vertical_rate,
                 altitude_difference,
             )| {
@@ -839,13 +840,12 @@ fn velocity(input: &[u8]) -> ADSBMessage {
                     ifr_capability,
                     navigation_uncertainty,
                     velocity,
-                    vertical_rate_source,
                     vertical_rate,
                     altitude_difference,
                 ))
             },
         ),
-    ))(&input)
+    ))(input)
     .unwrap()
     .1
 }
@@ -865,17 +865,26 @@ fn altitude_difference(input: (bool, u8)) -> AltitudeDifference {
     }
 }
 
-fn vertical_rate(input: (bool, u16)) -> VerticalRate {
-    let down = input.0;
-    let rate: i32 = input.1.into();
-
-    let sign = match down {
-        true => 1,
-        false => -1,
-    };
+fn vertical_rate(input: (u8, bool, u16)) -> VerticalRate {
+    let source = input.0;
+    let down = input.1;
+    let rate: i32 = input.2.into();
 
     match rate {
         0 => VerticalRate::NoInformation,
-        _ => VerticalRate::FeetPerMinute(sign * 64 * (rate - 1)),
+        _ => {
+            let sign = match down {
+                true => -1,
+                false => 1,
+            };
+
+            let rate = sign * 64 * (rate - 1);
+
+            match source {
+                0 => VerticalRate::FeetPerMinute(VerticalRateSource::GNSS(rate)),
+                1 => VerticalRate::FeetPerMinute(VerticalRateSource::Barometer(rate)),
+                _ => unreachable!("Impossible vertical rate source {}", source),
+            }
+        }
     }
 }

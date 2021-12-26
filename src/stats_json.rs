@@ -56,43 +56,43 @@ lazy_static! {
     static ref ADAPTIVE_GAIN: GaugeVec = register_gauge_vec!(
         "adsb_stats_adaptive_gain_dB",
         "Current adaptive gain setting",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref ADAPTIVE_GAIN_LIMIT: GaugeVec = register_gauge_vec!(
         "adsb_stats_adaptive_gain_dynamic_range_limit_dB",
         "Current dynamic range gain upper limit",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref ADAPTIVE_NOISE_FLOOR: GaugeVec = register_gauge_vec!(
         "adsb_stats_adaptive_gain_noise_floor_dBFS",
         "Current dynamic range noise floor",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref ADAPTIVE_GAIN_CHANGES: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_adaptive_gain_changes_total",
         "Number of dynamic gain changes",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref ADAPTIVE_UNDECODED: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_adaptive_loud_undecoded_total",
         "Number of loud undecoded bursts",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref ADAPTIVE_DECODED: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_adaptive_loud_decoded_total",
         "Number of loud decoded messages",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref ADAPTIVE_GAIN_SECONDS: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_adaptive_gain_seconds_total",
         "Number of seconds spent in a dB gain level",
-        &[&"frequency", "gain_dB"],
+        &["frequency", "gain_dB"],
     )
     .unwrap();
 
@@ -100,85 +100,85 @@ lazy_static! {
     static ref CPR_SURFACE: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_cpr_surface_total",
         "Number of surface CPR messages received",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref CPR_AIRBORNE: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_cpr_airborne_total",
         "Number of airborne CPR messages received",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref CPR_GLOBAL_OK: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_cpr_global_ok_total",
         "Number of global positions derived",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref CPR_GLOBAL_BAD: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_cpr_global_bad_total",
         "Number of global positions rejected for inconsistency",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref CPR_GLOBAL_RANGE: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_cpr_global_bad_range_total",
         "Number of global bad positions exceeding the receiver maximum range",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref CPR_GLOBAL_SPEED: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_cpr_global_bad_speed_total",
         "Number of global bad positions exceeding inter-position speed checks",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref CPR_GLOBAL_SKIPPED: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_cpr_global_skipped_total",
         "Number of global position attempts skipped due to missing data",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref CPR_LOCAL_OK: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_cpr_local_ok_total",
         "Number of local (relative) positions found",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref CPR_LOCAL_AIRCRAFT: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_cpr_local_aircraft_relative_total",
         "Number of local positions relative to a previous aircraft position",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref CPR_LOCAL_RECEIVER: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_cpr_local_receiver_relative_total",
         "Number of local positions relative to the receiver position",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref CPR_LOCAL_RANGE: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_cpr_local_bad_range_total",
         "Number of local bad positions exceeding the receiver maximum range, or with an ambiguous range",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref CPR_LOCAL_SPEED: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_cpr_local_bad_speed_total",
         "Number of local bad positions exceeding inter-position speed checks",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref CPR_LOCAL_SKIPPED: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_cpr_local_skipped_total",
         "Number of local position attempts skipped due to missing data",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref CPR_FILTERED: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_cpr_filtered_total",
         "Number of CPR messages ignored for matching faulty transponder heuristics",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
 
@@ -186,19 +186,19 @@ lazy_static! {
     static ref CPU_DEMOD: CounterVec = register_counter_vec!(
         "adsb_stats_cpu_demodulation_seconds_total",
         "Number CPU seconds spent demodulation and decoding SDR data",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref CPU_READER: CounterVec = register_counter_vec!(
         "adsb_stats_cpu_reader_seconds_total",
         "Number CPU seconds spent reading SDR sample data",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref CPU_BACKGROUND: CounterVec = register_counter_vec!(
         "adsb_stats_cpu_background_seconds_total",
         "Number CPU seconds spent on network IO and periodic tasks",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
 
@@ -206,67 +206,67 @@ lazy_static! {
     static ref LOCAL_SAMPLES_PROCESSED: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_local_samples_processed_total",
         "Number of local samples processed",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref LOCAL_SAMPLES_DROPPED: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_local_samples_dropped_total",
         "Number of local samples dropped before processing, a nonzero value means CPU overload",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref LOCAL_MODEAC: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_local_modeac_decoded_total",
         "Number of local mode A/C messages decoded",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref LOCAL_MODES: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_local_modes_preambles_total",
         "Number of local mode S preambles received",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref LOCAL_MODES_BAD: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_local_modes_bad_total",
         "Number of local mode S preambles that didn't result in a valid message",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref LOCAL_UNKNOWN_ICAO: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_local_modes_unknown_icao_total",
         "Number of local mode S preambles with an unknown ICAO address",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref LOCAL_ACCEPTED: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_local_modes_accepted_total",
         "Number of local valid mode S messages labeled with N-bit error corrections",
-        &[&"frequency", "corrections"],
+        &["frequency", "corrections"],
     )
     .unwrap();
     static ref LOCAL_SIGNAL: GaugeVec = register_gauge_vec!(
         "adsb_stats_local_signal_dbfs",
         "Mean signal power of local received messages in dBFS",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref LOCAL_SIGNAL_PEAK: GaugeVec = register_gauge_vec!(
         "adsb_stats_local_signal_dbfs_peak",
         "Peak signal power of local received messages in dBFS",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref LOCAL_NOISE: GaugeVec = register_gauge_vec!(
         "adsb_stats_local_noise_dbfs",
         "Mean signal noise of local received messages in dBFS",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref LOCAL_STRONG_SIGNALS: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_local_strong_signals_total",
         "Number of local messages received with a signal power above -3dBFS",
-        &[&"frequency", "corrections"],
+        &["frequency", "corrections"],
     )
     .unwrap();
 
@@ -274,13 +274,13 @@ lazy_static! {
     static ref MESSAGES: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_messages_total",
         "Number of messages received from any source",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref MESSAGES_BY_DF: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_messages_by_df_total",
         "Number of messages received per downlink format",
-        &[&"frequency", "downlink_format"],
+        &["frequency", "downlink_format"],
     )
     .unwrap();
 
@@ -288,31 +288,31 @@ lazy_static! {
     static ref REMOTE_MODEAC: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_remote_modeac_decoded_total",
         "Number of remote mode A/C messages decoded",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref REMOTE_MODES: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_remote_modes_preambles_total",
         "Number of remote mode S preambles received",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref REMOTE_MODES_BAD: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_remote_modes_bad_total",
         "Number of remote mode S preambles that didn't result in a valid message",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref REMOTE_UNKNOWN_ICAO: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_remote_modes_unknown_icao_total",
         "Number of remote mode S preambles with an unknown ICAO address",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref REMOTE_ACCEPTED: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_remote_modes_accepted_total",
         "Number of valid remote mode S messages labeled by N-bit error corrections",
-        &[&"frequency", "corrections"],
+        &["frequency", "corrections"],
     )
     .unwrap();
 
@@ -320,19 +320,19 @@ lazy_static! {
     static ref TRACKS_ALL: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_tracks_total",
         "Number of unique aircraft tracks",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref TRACKS_SINGLE: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_tracks_single_message_total",
         "Number of single message aircraft tracks",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
     static ref TRACKS_UNRELIABLE: IntCounterVec = register_int_counter_vec!(
         "adsb_stats_tracks_unreliable_total",
         "Number of unreliable tracks marked unreliable",
-        &[&"frequency"],
+        &["frequency"],
     )
     .unwrap();
 }
