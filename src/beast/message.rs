@@ -16,6 +16,7 @@ pub enum ADSBMessage {
     AircraftIdentification(AircraftIdentification),
     AircraftStatus(AircraftStatus),
     AirbornePosition(AirbornePosition),
+    TargetState(TargetStateType),
     Velocity(Velocity),
 }
 
@@ -124,6 +125,25 @@ pub struct AltitudeReply {
 }
 
 #[derive(Debug, PartialEq)]
+pub enum AltitudeSetting {
+    None,
+    Feet(u32),
+}
+
+#[derive(Debug, PartialEq)]
+pub enum AltitudeSource {
+    Unknown,
+    MCPFCU,
+    FMS,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum BarometerSetting {
+    None,
+    MilliBar(f64),
+}
+
+#[derive(Debug, PartialEq)]
 pub enum CPRFormat {
     Even,
     Odd,
@@ -141,6 +161,7 @@ pub enum Data {
     AltitudeReply(AltitudeReply),
     ExtendedSquitter(ExtendedSquitter),
     SurveillanceReply(SurveillanceReply),
+    TargetState(TargetStateType),
     Unsupported(Vec<u8>),
 }
 
@@ -186,6 +207,12 @@ pub struct GroundVelocity {
 }
 
 #[derive(Debug, PartialEq)]
+pub enum HeadingSetting {
+    None,
+    MagneticOrTrue(f64),
+}
+
+#[derive(Debug, PartialEq)]
 pub enum Message {
     ModeS(ModeS),
     Unsupported(String),
@@ -219,6 +246,20 @@ pub enum SensitivityLevel {
 }
 
 #[derive(Debug, PartialEq)]
+pub enum SourceIntegrityLevel {
+    Unknown,
+    PerThousand,
+    PerHundredThousand,
+    PerTenMillion,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum SourceIntegrityLevelSupplement {
+    PerHour,
+    PerSample,
+}
+
+#[derive(Debug, PartialEq)]
 pub struct SurveillanceReply {
     pub flight_status: FlightStatus,
     pub downlink_request: u8,
@@ -232,6 +273,33 @@ pub enum SurveillanceStatus {
     PermanentAlert,
     TemporaryAlert,
     SPICondition,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum TargetStateType {
+    SubType0(TargetState0),
+    SubType1(TargetState1),
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TargetState0 {}
+
+#[derive(Debug, PartialEq)]
+pub struct TargetState1 {
+    pub sil_supplement: SourceIntegrityLevelSupplement,
+    pub altitude_source: AltitudeSource,
+    pub altitude_setting: AltitudeSetting,
+    pub barometer_setting: BarometerSetting,
+    pub heading_setting: HeadingSetting,
+    pub nac_position: u8,
+    pub nic_barometric: u8,
+    pub sil: SourceIntegrityLevel,
+    pub autopilot: Option<bool>,
+    pub vnav: Option<bool>,
+    pub altitude_hold: Option<bool>,
+    pub autopilot_approach: Option<bool>,
+    pub tcas: Option<bool>,
+    pub lnav: Option<bool>,
 }
 
 #[derive(Debug, PartialEq)]

@@ -2,6 +2,7 @@ use crate::beast::*;
 
 use log::debug;
 
+use nom::branch::*;
 use nom::bytes::streaming::*;
 use nom::combinator::*;
 use nom::error::*;
@@ -348,7 +349,7 @@ fn message(me: u64) -> ADSBMessage {
         19 => velocity(&input),
         20..=22 => unimplemented!("airborne_position"),
         28 => aircraft_status(&input),
-        29 => unimplemented!("target_states"),
+        29 => target_state(&input),
         31 => unimplemented!("operational_status"),
         _ => unreachable!("Unsupported type code {}", type_code),
     }
@@ -591,6 +592,200 @@ fn surveillance_status(ss: u8) -> SurveillanceStatus {
         2 => SurveillanceStatus::TemporaryAlert,
         3 => SurveillanceStatus::SPICondition,
         _ => unreachable!("impossible surveillance status {}", ss),
+    }
+}
+
+fn target_state(input: &[u8]) -> ADSBMessage {
+    use nom::bits::bits;
+    use nom::bits::complete::tag;
+    use nom::bits::complete::take;
+
+    bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(preceded::<_, u16, _, _, _, _>(
+        take(13usize),
+        map(
+            alt((
+                preceded::<_, u8, _, _, _, _>(
+                    tag(0, 2usize), // sub-type 0
+                    map(
+                        tuple((
+                            take(2usize),
+                            take(1usize),
+                            take(1usize),
+                            take(2usize),
+                            take(2usize),
+                            take(10usize),
+                            take(2usize),
+                            take(9usize),
+                            take(1usize),
+                            take(2usize),
+                            take(4usize),
+                            take(1usize),
+                            take(2usize),
+                            preceded::<_, u8, _, _, _, _>(take(5usize), take(2usize)),
+                            take(3usize),
+                        )),
+                        |_: (u8, u8, u8, u8, u8, u16, u8, u8, u8, u8, u8, u8, u8, u8, u8)| {
+                            TargetStateType::SubType0(TargetState0 {})
+                        },
+                    ),
+                ),
+                preceded::<_, u8, _, _, _, _>(
+                    tag(1, 2usize), // sub-type 1
+                    map(
+                        tuple((
+                            map(take(1usize), sil_supplement),
+                            map(take(1usize), |fms: u8| fms == 1),
+                            map(take(10usize), altitude_setting),
+                            map(take(9usize), barometer_setting),
+                            map(tuple((take(1usize), take(9usize))), heading_setting),
+                            map(take(3usize), nac_position),
+                            map(take(1usize), nic_barometric),
+                            map(take(2usize), sil),
+                            alt((
+                                map(tag(0, 1usize), |_| {
+                                    (false, None, None, None, None, None, None)
+                                }),
+                                tuple((
+                                    map(tag(1, 1usize), |_| true),
+                                    map(take(1usize), |b: u8| match b {
+                                        0 => Some(false),
+                                        1 => Some(true),
+                                        _ => unreachable!("impossible autopilot flag {}", b),
+                                    }),
+                                    map(take(1usize), |b: u8| match b {
+                                        0 => Some(false),
+                                        1 => Some(true),
+                                        _ => unreachable!("impossible VNAV flag {}", b),
+                                    }),
+                                    map(take(1usize), |b: u8| match b {
+                                        0 => Some(false),
+                                        1 => Some(true),
+                                        _ => {
+                                            unreachable!("impossible altitude hold flag {}", b)
+                                        }
+                                    }),
+                                    map(take(1usize), |b: u8| match b {
+                                        0 => Some(false),
+                                        1 => Some(true),
+                                        _ => {
+                                            unreachable!("impossible autopilot approach flag {}", b)
+                                        }
+                                    }),
+                                    map(take(1usize), |b: u8| match b {
+                                        0 => Some(false),
+                                        1 => Some(true),
+                                        _ => unreachable!("impossible TCAS flag {}", b),
+                                    }),
+                                    map(take(1usize), |b: u8| match b {
+                                        0 => Some(false),
+                                        1 => Some(true),
+                                        _ => unreachable!("impossible LNAV flag {}", b),
+                                    }),
+                                )),
+                            )),
+                        )),
+                        |(
+                            sil_supplement,
+                            fms,
+                            altitude_setting,
+                            barometer_setting,
+                            heading_setting,
+                            nac_position,
+                            nic_barometric,
+                            sil,
+                            (
+                                known_source,
+                                autopilot,
+                                vnav,
+                                altitude_hold,
+                                autopilot_approach,
+                                tcas,
+                                lnav,
+                            ),
+                        )| {
+                            let altitude_source = match known_source {
+                                false => AltitudeSource::Unknown,
+                                true => match fms {
+                                    false => AltitudeSource::MCPFCU,
+                                    true => AltitudeSource::FMS,
+                                },
+                            };
+
+                            TargetStateType::SubType1(TargetState1 {
+                                sil_supplement,
+                                altitude_source,
+                                altitude_setting,
+                                barometer_setting,
+                                heading_setting,
+                                nac_position,
+                                nic_barometric,
+                                sil,
+                                autopilot,
+                                vnav,
+                                altitude_hold,
+                                autopilot_approach,
+                                tcas,
+                                lnav,
+                            })
+                        },
+                    ),
+                ),
+            )),
+            |target_state| ADSBMessage::TargetState(target_state),
+        ),
+    ))(input)
+    .unwrap()
+    .1
+}
+
+fn altitude_setting(altitude_setting: u32) -> AltitudeSetting {
+    match altitude_setting {
+        0 => AltitudeSetting::None,
+        _ => AltitudeSetting::Feet(altitude_setting * 32),
+    }
+}
+
+fn barometer_setting(barometer_setting: u16) -> BarometerSetting {
+    match barometer_setting {
+        0 => BarometerSetting::None,
+        _ => BarometerSetting::MilliBar(800.0 + (barometer_setting as f64 - 1.0) * 0.8),
+    }
+}
+
+fn heading_setting(input: (u8, u16)) -> HeadingSetting {
+    match input.0 {
+        0 => HeadingSetting::None,
+        1 => HeadingSetting::MagneticOrTrue((input.1 as f64 * 180.0) / 256.0),
+        _ => unreachable!("impossible heading setting {}", input.0),
+    }
+}
+
+fn nac_position(nac_p: u8) -> u8 {
+    nac_p
+}
+
+fn nic_barometric(nic_b: u8) -> u8 {
+    nic_b
+}
+
+fn sil(sil: u8) -> SourceIntegrityLevel {
+    match sil {
+        0 => SourceIntegrityLevel::Unknown,
+        1 => SourceIntegrityLevel::PerThousand,
+        2 => SourceIntegrityLevel::PerHundredThousand,
+        3 => SourceIntegrityLevel::PerTenMillion,
+        _ => unreachable!("impossible source integrity level {}", sil),
+    }
+}
+
+fn sil_supplement(sil_supplement: u8) -> SourceIntegrityLevelSupplement {
+    match sil_supplement {
+        0 => SourceIntegrityLevelSupplement::PerHour,
+        1 => SourceIntegrityLevelSupplement::PerSample,
+        _ => unreachable!(
+            "impossible source integrity level supplement {}",
+            sil_supplement
+        ),
     }
 }
 

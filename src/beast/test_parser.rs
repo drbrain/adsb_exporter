@@ -219,3 +219,35 @@ fn test_parse_df_17_tc_28() {
 
     assert_eq!(expected, data);
 }
+
+#[test]
+fn test_parse_df_17_tc_29() {
+    let input = vec![
+        0x8d, 0xa8, 0x2d, 0xfb, 0xea, 0x38, 0xc8, 0x60, 0x01, 0x5f, 0x88,
+    ];
+
+    let data = parse_df_17(&input);
+
+    let expected = Data::ExtendedSquitter(ExtendedSquitter {
+        capability: 5,
+        icao: "A82DFB".to_string(),
+        message: ADSBMessage::TargetState(TargetStateType::SubType1(TargetState1 {
+            sil_supplement: SourceIntegrityLevelSupplement::PerHour,
+            altitude_source: AltitudeSource::MCPFCU,
+            altitude_setting: AltitudeSetting::Feet(14528),
+            barometer_setting: BarometerSetting::MilliBar(906.4),
+            heading_setting: HeadingSetting::None,
+            nac_position: 2,
+            nic_barometric: 1,
+            sil: SourceIntegrityLevel::PerThousand,
+            autopilot: Some(true),
+            vnav: Some(true),
+            altitude_hold: Some(true),
+            autopilot_approach: Some(true),
+            tcas: Some(false),
+            lnav: Some(false),
+        })),
+    });
+
+    assert_eq!(expected, data);
+}
