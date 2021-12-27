@@ -105,6 +105,13 @@ pub enum AirspeedType {
 }
 
 #[derive(Debug, PartialEq)]
+pub struct AllCallReply {
+    pub capability: u8,
+    pub icao: String,
+    pub parity: u32,
+}
+
+#[derive(Debug, PartialEq)]
 pub enum Altitude {
     Invalid,
     Feet(i32),
@@ -159,6 +166,7 @@ pub enum CrossLink {
 #[derive(Debug, PartialEq)]
 pub enum Data {
     ACASSurveillanceReply(ACASSurveillanceReply),
+    AllCallReply(AllCallReply),
     AltitudeReply(AltitudeReply),
     ExtendedSquitter(ExtendedSquitter),
     SurveillanceReply(SurveillanceReply),

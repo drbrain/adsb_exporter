@@ -84,6 +84,7 @@ fn mode_s(timestamp: u32, signal_level: f64, input: &[u8]) -> IResult<&[u8], Mes
         0 => parse_df_0(input),
         4 => parse_df_4(input),
         5 => parse_df_5(input),
+        11 => parse_df_11(input),
         17 => parse_df_17(input),
         _ => panic!("message type {} not supported", message_type),
     };
@@ -168,6 +169,31 @@ pub(crate) fn parse_df_5(input: &[u8]) -> Data {
     .unwrap();
 
     Data::SurveillanceReply(reply)
+}
+
+pub(crate) fn parse_df_11(input: &[u8]) -> Data {
+    use nom::bits::bits;
+    use nom::bits::complete::take;
+
+    bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(preceded::<_, u8, _, _, _, _>(
+        take(5usize),
+        map(
+            tuple((
+                map(take(3usize), capability),
+                map(take(24usize), address_announced),
+                take(24usize),
+            )),
+            |(capability, icao, parity)| {
+                Data::AllCallReply(AllCallReply {
+                    capability,
+                    icao,
+                    parity,
+                })
+            },
+        ),
+    ))(input)
+    .unwrap()
+    .1
 }
 
 pub(crate) fn parse_df_17(input: &[u8]) -> Data {

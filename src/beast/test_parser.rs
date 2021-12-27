@@ -94,6 +94,21 @@ fn test_parse_df_5() {
 }
 
 #[test]
+fn test_parse_df_11() {
+    let input = vec![0x5d, 0xa6, 0xa6, 0xb7, 0xfd, 0xe8, 0xb1];
+
+    let data = parse_df_11(&input);
+
+    let expected = Data::AllCallReply(AllCallReply {
+        capability: 5,
+        icao: "A6A6B7".to_string(),
+        parity: 16640177,
+    });
+
+    assert_eq!(expected, data);
+}
+
+#[test]
 fn test_parse_df_17_tc_unsupported() {
     let input = vec![
         0x8d, 0xa6, 0xee, 0x47, 0xf8, 0x23, 0x00, 0x02, 0x00, 0x49, 0xb8,
