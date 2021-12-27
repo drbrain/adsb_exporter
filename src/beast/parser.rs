@@ -30,29 +30,31 @@ impl Parser {
 }
 
 fn parse<'a>(input: &'a [u8]) -> IResult<&'a [u8], Message> {
-    let (input, message_length) = map(
-        many_till(
-            take(1usize),
-            preceded(tag(b"\x1a"), alt((tag(b"1"), tag(b"2"), tag(b"3")))),
-        ),
-        |(_, message_format): (_, &[u8])| match message_format {
-            b"1" => MODE_AC_LENGTH,
-            b"2" => MODE_S_SHORT_LENGTH,
-            b"3" => MODE_S_LONG_LENGTH,
-            v => panic!("unknown BEAST message format: {:?}", v),
-        },
+    let (input, (_, (message_length, timestamp, signal_level))) = many_till(
+        take(1usize),
+        tuple((
+            map(
+                preceded(tag(b"\x1a"), alt((tag(b"1"), tag(b"2"), tag(b"3")))),
+                |message_format: &[u8]| match message_format {
+                    b"1" => MODE_AC_LENGTH,
+                    b"2" => MODE_S_SHORT_LENGTH,
+                    b"3" => MODE_S_LONG_LENGTH,
+                    v => panic!("unknown BEAST message format: {:?}", v),
+                },
+            ),
+            map(take_while_m_n(6, 6, |_| true), |ts: &[u8]| {
+                ts.iter().fold(0u32, |ts, c| (ts << 8) | *c as u32)
+            }),
+            map(take(1usize), |signal: &[u8]| {
+                let signal = signal[0] as f64 / 255.0;
+                signal * signal
+            }),
+        )),
     )(input)?;
 
     debug!("message_length: {}", message_length);
-
-    let (input, ts) = take_while_m_n(6, 6, |_| true)(input)?;
-    let timestamp = ts.iter().fold(0u32, |ts, c| (ts << 8) | *c as u32);
     debug!("timestamp: {}", timestamp);
-
-    let (input, signal) = take(1usize)(input)?;
-    let signal = signal[0] as f64 / 255.0;
-    let signal_level = signal * signal;
-    debug!("signal: {}", signal_level);
+    debug!("signal_level: {}", signal_level);
 
     let (input, message) = preceded(
         many0(tag("\x1a")),
