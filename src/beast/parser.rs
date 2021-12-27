@@ -30,20 +30,16 @@ impl Parser {
 }
 
 fn parse<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Message, E> {
-    let (input, _) = many1(tag(b"\x1a"))(input)?;
+    let (input, message_length) = preceded(
+        many1(tag(b"\x1a")),
+        map(take(1usize), |message_format: &[u8]| match message_format {
+            b"1" => MODE_AC_LENGTH,
+            b"2" => MODE_S_SHORT_LENGTH,
+            b"3" => MODE_S_LONG_LENGTH,
+            v => panic!("unsupported: {:?}", v),
+        }),
+    )(input)?;
 
-    let (input, message_format) = take(1usize)(input)?;
-    debug!(
-        "message_format: {:?}",
-        std::str::from_utf8(message_format).unwrap()
-    );
-
-    let message_length = match message_format {
-        b"1" => MODE_AC_LENGTH,
-        b"2" => MODE_S_SHORT_LENGTH,
-        b"3" => MODE_S_LONG_LENGTH,
-        v => panic!("unsupported: {:?}", v),
-    };
     debug!("message_length: {}", message_length);
 
     let (input, ts) = take_while_m_n(6, 6, |_| true)(input)?;
@@ -57,7 +53,7 @@ fn parse<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Mess
 
     let (input, message) = take_while_m_n(message_length, message_length, |_| true)(input)?;
 
-    debug!("message: {:?}", message);
+    debug!("message: {:x?}", message);
 
     if message_length == MODE_AC_LENGTH {
         return Ok((
