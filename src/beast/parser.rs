@@ -1,3 +1,5 @@
+use anyhow::Result;
+
 use crate::beast::*;
 
 use log::debug;
@@ -65,12 +67,12 @@ fn parse<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Mess
         return Ok((input, Message::Unsupported(message.to_vec())));
     }
 
-    let (_, message) = mode_s(timestamp, signal, message).unwrap();
+    let message = mode_s(timestamp, signal, message).unwrap();
 
     Ok((input, message))
 }
 
-fn mode_s(timestamp: u32, signal_level: f64, input: &[u8]) -> IResult<&[u8], Message> {
+fn mode_s(timestamp: u32, signal_level: f64, input: &[u8]) -> Result<Message> {
     use nom::bits::bits;
     use nom::bits::complete::take;
 
@@ -88,30 +90,21 @@ fn mode_s(timestamp: u32, signal_level: f64, input: &[u8]) -> IResult<&[u8], Mes
         11 => parse_df_11(input),
         16 => parse_df_16(input),
         17 => parse_df_17(input),
-        _ => return Ok((input, Message::Unsupported(input.to_vec()))),
+        _ => return Ok(Message::Unsupported(input.to_vec())),
     };
 
-    let mode_s = Message::ModeS(ModeS {
+    Ok(Message::ModeS(ModeS {
         timestamp,
         signal_level,
         data,
-    });
-
-    Ok((input, mode_s))
+    }))
 }
 
 pub(crate) fn parse_df_0(input: &[u8]) -> Data {
     use nom::bits::bits;
     use nom::bits::complete::take;
 
-    let (_, reply) = bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(preceded::<
-        _,
-        u8,
-        _,
-        _,
-        _,
-        _,
-    >(
+    bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(preceded::<_, u8, _, _, _, _>(
         take(5usize),
         map(
             tuple((
@@ -122,65 +115,66 @@ pub(crate) fn parse_df_0(input: &[u8]) -> Data {
                 preceded::<_, u8, _, _, _, _>(take(2usize), map(take(13usize), altitude_code)),
             )),
             |(vertical_status, cross_link, sensitivity_level, reply_information, altitude)| {
-                ACASSurveillanceReply {
+                Data::ACASSurveillanceReply(ACASSurveillanceReply {
                     vertical_status,
                     cross_link,
                     sensitivity_level,
                     reply_information,
                     altitude,
-                }
+                })
             },
         ),
     ))(input)
-    .unwrap();
-
-    Data::ACASSurveillanceReply(reply)
+    .unwrap()
+    .1
 }
 
 pub(crate) fn parse_df_4(input: &[u8]) -> Data {
     use nom::bits::bits;
     use nom::bits::complete::take;
 
-    let (_, reply) = bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(map(
+    bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(map(
         tuple((
             preceded::<_, u8, _, _, _, _>(take(5usize), map(take(3usize), flight_status)),
             take(5usize),
             take(6usize),
             map(take(13usize), altitude_code),
         )),
-        |(flight_status, downlink_request, utility_message, altitude)| AltitudeReply {
-            flight_status,
-            downlink_request,
-            utility_message,
-            altitude,
+        |(flight_status, downlink_request, utility_message, altitude)| {
+            Data::AltitudeReply(AltitudeReply {
+                flight_status,
+                downlink_request,
+                utility_message,
+                altitude,
+            })
         },
     ))(input)
-    .unwrap();
-
-    Data::AltitudeReply(reply)
+    .unwrap()
+    .1
 }
 
 pub(crate) fn parse_df_5(input: &[u8]) -> Data {
     use nom::bits::bits;
     use nom::bits::complete::take;
 
-    let (_, reply) = bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(map(
+    bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(map(
         tuple((
             preceded::<_, u8, _, _, _, _>(take(5usize), map(take(3usize), flight_status)),
             take(5usize),
             take(6usize),
             map(take(13usize), ident),
         )),
-        |(flight_status, downlink_request, utility_message, id)| SurveillanceReply {
-            flight_status,
-            downlink_request,
-            utility_message,
-            id,
+        |(flight_status, downlink_request, utility_message, id)| {
+            Data::SurveillanceReply(SurveillanceReply {
+                flight_status,
+                downlink_request,
+                utility_message,
+                id,
+            })
         },
     ))(input)
-    .unwrap();
-
-    Data::SurveillanceReply(reply)
+    .unwrap()
+    .1
 }
 
 pub(crate) fn parse_df_11(input: &[u8]) -> Data {
