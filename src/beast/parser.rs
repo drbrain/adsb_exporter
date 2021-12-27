@@ -1,5 +1,3 @@
-use anyhow::Result;
-
 use crate::beast::*;
 
 use log::debug;
@@ -74,12 +72,12 @@ fn parse<'a>(input: &'a [u8]) -> IResult<&'a [u8], Message> {
         ));
     }
 
-    let message = mode_s(timestamp, signal_level, message).unwrap();
+    let message = mode_s(timestamp, signal_level, message).unwrap().1;
 
     Ok((input, message))
 }
 
-fn mode_s(timestamp: u32, signal_level: f64, input: &[u8]) -> Result<Message> {
+fn mode_s<'a>(timestamp: u32, signal_level: f64, input: &'a [u8]) -> IResult<&'a [u8], Message> {
     use nom::bits::bits;
     use nom::bits::complete::take;
 
@@ -98,15 +96,13 @@ fn mode_s(timestamp: u32, signal_level: f64, input: &[u8]) -> Result<Message> {
                 _ => Data::Unsupported(input.to_vec()),
             };
 
-            Ok(Message {
+            Message {
                 timestamp,
                 signal_level,
                 data,
-            })
+            }
         },
     )(input)
-    .unwrap()
-    .1
 }
 
 pub(crate) fn parse_df_0(input: &[u8]) -> Data {
