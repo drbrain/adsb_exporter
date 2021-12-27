@@ -3,6 +3,15 @@ use nom::error::*;
 use nom::sequence::*;
 
 #[derive(Debug, PartialEq)]
+pub struct ACASCoordinationReply {
+    pub vertical_status: VerticalStatus,
+    pub sensitivity_level: SensitivityLevel,
+    pub reply_information: ReplyInformation,
+    pub altitude: Altitude,
+    pub message: Vec<u8>,
+}
+
+#[derive(Debug, PartialEq)]
 pub struct ACASSurveillanceReply {
     pub vertical_status: VerticalStatus,
     pub cross_link: CrossLink,
@@ -166,6 +175,7 @@ pub enum CrossLink {
 #[derive(Debug, PartialEq)]
 pub enum Data {
     ACASSurveillanceReply(ACASSurveillanceReply),
+    ACASCoordinationReply(ACASCoordinationReply),
     AllCallReply(AllCallReply),
     AltitudeReply(AltitudeReply),
     ExtendedSquitter(ExtendedSquitter),

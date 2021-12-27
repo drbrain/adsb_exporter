@@ -109,6 +109,25 @@ fn test_parse_df_11() {
 }
 
 #[test]
+fn test_parse_df_16() {
+    let input = vec![
+        0x80, 0x81, 0x83, 0x3c, 0x58, 0x1b, 0xc7, 0x05, 0x35, 0x7f, 0xfd, 0x13, 0x90, 0xfb,
+    ];
+
+    let data = parse_df_16(&input);
+
+    let expected = Data::ACASCoordinationReply(ACASCoordinationReply {
+        vertical_status: VerticalStatus::Either,
+        sensitivity_level: SensitivityLevel::Operative(4),
+        reply_information: ReplyInformation::ACASVerticalOnly,
+        altitude: Altitude::Feet(4500),
+        message: vec![88, 27, 199, 5, 53, 127, 253],
+    });
+
+    assert_eq!(expected, data);
+}
+
+#[test]
 fn test_parse_df_17_tc_unsupported() {
     let input = vec![
         0x8d, 0xa6, 0xee, 0x47, 0xf8, 0x23, 0x00, 0x02, 0x00, 0x49, 0xb8,

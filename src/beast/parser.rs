@@ -89,6 +89,7 @@ fn mode_s(timestamp: u32, signal_level: f64, input: &[u8]) -> IResult<&[u8], Mes
         4 => parse_df_4(input),
         5 => parse_df_5(input),
         11 => parse_df_11(input),
+        16 => parse_df_16(input),
         17 => parse_df_17(input),
         _ => panic!("downlink format {} not supported", downlink_format),
     };
@@ -202,6 +203,37 @@ pub(crate) fn parse_df_11(input: &[u8]) -> Data {
                     capability,
                     icao,
                     parity,
+                })
+            },
+        ),
+    ))(input)
+    .unwrap()
+    .1
+}
+
+pub(crate) fn parse_df_16(input: &[u8]) -> Data {
+    use nom::bits::bits;
+    use nom::bits::complete::take;
+
+    bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(preceded::<_, u8, _, _, _, _>(
+        take(5usize),
+        map(
+            tuple((
+                map(take(1usize), vertical_status),
+                preceded::<_, u8, _, _, _, _>(take(2usize), map(take(3usize), sensitivity_level)),
+                preceded::<_, u8, _, _, _, _>(take(2usize), map(take(4usize), reply_information)),
+                preceded::<_, u8, _, _, _, _>(take(2usize), map(take(13usize), altitude_code)),
+                map(take(56usize), |message: u64| {
+                    message.to_be_bytes()[1..].to_vec()
+                }),
+            )),
+            |(vertical_status, sensitivity_level, reply_information, altitude, message)| {
+                Data::ACASCoordinationReply(ACASCoordinationReply {
+                    vertical_status,
+                    sensitivity_level,
+                    reply_information,
+                    altitude,
+                    message,
                 })
             },
         ),
