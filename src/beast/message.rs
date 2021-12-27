@@ -240,12 +240,17 @@ pub enum NorthSouthDirection {
     NorthToSouth,
 }
 
+/// Maximum airspeeds are in knots
 #[derive(Debug, PartialEq)]
 pub enum ReplyInformation {
     Inoperative,
     ACASInhibited,
     ACASVerticalOnly,
     ACASVerticalAndHorizontal,
+    NoMaximumAirspeed,
+    MaximumAirspeedUnder(u16),
+    MaximumAirspeedBetween(u16, u16),
+    MaximumAirspeedOver(u16),
 }
 
 #[derive(Debug, PartialEq)]

@@ -30,14 +30,17 @@ impl Parser {
 }
 
 fn parse<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Message, E> {
-    let (input, message_length) = preceded(
-        many1(tag(b"\x1a")),
-        map(take(1usize), |message_format: &[u8]| match message_format {
+    let (input, message_length) = map(
+        many_till(
+            take(1usize),
+            preceded(tag(b"\x1a"), alt((tag(b"1"), tag(b"2"), tag(b"3")))),
+        ),
+        |(_, message_format): (_, &[u8])| match message_format {
             b"1" => MODE_AC_LENGTH,
             b"2" => MODE_S_SHORT_LENGTH,
             b"3" => MODE_S_LONG_LENGTH,
-            v => panic!("unsupported: {:?}", v),
-        }),
+            v => panic!("unknown BEAST message format: {:?}", v),
+        },
     )(input)?;
 
     debug!("message_length: {}", message_length);
@@ -51,7 +54,10 @@ fn parse<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Mess
     let signal = signal * signal;
     debug!("signal: {}", signal);
 
-    let (input, message) = take_while_m_n(message_length, message_length, |_| true)(input)?;
+    let (input, message) = preceded(
+        many0(tag("\x1a")),
+        take_while_m_n(message_length, message_length, |_| true),
+    )(input)?;
 
     debug!("message: {:x?}", message);
 
@@ -71,18 +77,20 @@ fn mode_s(timestamp: u32, signal_level: f64, input: &[u8]) -> IResult<&[u8], Mes
     use nom::bits::bits;
     use nom::bits::complete::take;
 
-    let message_type: u8 =
+    let downlink_format: u8 =
         bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(take(5usize))(input)
             .unwrap()
             .1;
 
-    let data = match message_type {
+    debug!("DF={}", downlink_format);
+
+    let data = match downlink_format {
         0 => parse_df_0(input),
         4 => parse_df_4(input),
         5 => parse_df_5(input),
         11 => parse_df_11(input),
         17 => parse_df_17(input),
-        _ => panic!("message type {} not supported", message_type),
+        _ => panic!("downlink format {} not supported", downlink_format),
     };
 
     let mode_s = Message::ModeS(ModeS {
@@ -98,23 +106,33 @@ pub(crate) fn parse_df_0(input: &[u8]) -> Data {
     use nom::bits::bits;
     use nom::bits::complete::take;
 
-    let (_, reply) = bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(map(
-        tuple((
-            preceded::<_, u8, _, _, _, _>(take(5usize), map(take(1usize), vertical_status)),
-            map(take(1usize), cross_link),
-            preceded::<_, u8, _, _, _, _>(take(1usize), map(take(3usize), sensitivity_level)),
-            preceded::<_, u8, _, _, _, _>(take(2usize), map(take(4usize), reply_information)),
-            preceded::<_, u8, _, _, _, _>(take(2usize), map(take(13usize), altitude_code)),
-        )),
-        |(vertical_status, cross_link, sensitivity_level, reply_information, altitude)| {
-            ACASSurveillanceReply {
-                vertical_status,
-                cross_link,
-                sensitivity_level,
-                reply_information,
-                altitude,
-            }
-        },
+    let (_, reply) = bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(preceded::<
+        _,
+        u8,
+        _,
+        _,
+        _,
+        _,
+    >(
+        take(5usize),
+        map(
+            tuple((
+                map(take(1usize), vertical_status),
+                map(take(1usize), cross_link),
+                preceded::<_, u8, _, _, _, _>(take(1usize), map(take(3usize), sensitivity_level)),
+                preceded::<_, u8, _, _, _, _>(take(2usize), map(take(4usize), reply_information)),
+                preceded::<_, u8, _, _, _, _>(take(2usize), map(take(13usize), altitude_code)),
+            )),
+            |(vertical_status, cross_link, sensitivity_level, reply_information, altitude)| {
+                ACASSurveillanceReply {
+                    vertical_status,
+                    cross_link,
+                    sensitivity_level,
+                    reply_information,
+                    altitude,
+                }
+            },
+        ),
     ))(input)
     .unwrap();
 
@@ -393,6 +411,13 @@ fn reply_information(ri: u8) -> ReplyInformation {
         2 => ReplyInformation::ACASInhibited,
         3 => ReplyInformation::ACASVerticalOnly,
         4 => ReplyInformation::ACASVerticalAndHorizontal,
+        8 => ReplyInformation::NoMaximumAirspeed,
+        9 => ReplyInformation::MaximumAirspeedUnder(75),
+        10 => ReplyInformation::MaximumAirspeedBetween(75, 150),
+        11 => ReplyInformation::MaximumAirspeedBetween(150, 300),
+        12 => ReplyInformation::MaximumAirspeedBetween(300, 600),
+        13 => ReplyInformation::MaximumAirspeedBetween(600, 1200),
+        14 => ReplyInformation::MaximumAirspeedOver(1200),
         _ => unreachable!("Impossible reply information {}", ri),
     }
 }
