@@ -51,8 +51,8 @@ fn parse<'a>(input: &'a [u8]) -> IResult<&'a [u8], Message> {
 
     let (input, signal) = take(1usize)(input)?;
     let signal = signal[0] as f64 / 255.0;
-    let signal = signal * signal;
-    debug!("signal: {}", signal);
+    let signal_level = signal * signal;
+    debug!("signal: {}", signal_level);
 
     let (input, message) = preceded(
         many0(tag("\x1a")),
@@ -62,10 +62,17 @@ fn parse<'a>(input: &'a [u8]) -> IResult<&'a [u8], Message> {
     debug!("message: {:x?}", message);
 
     if message_length == MODE_AC_LENGTH {
-        return Ok((input, Message::Unsupported(message.to_vec())));
+        return Ok((
+            input,
+            Message {
+                timestamp,
+                signal_level,
+                data: Data::Unsupported(message.to_vec()),
+            },
+        ));
     }
 
-    let message = mode_s(timestamp, signal, message).unwrap();
+    let message = mode_s(timestamp, signal_level, message).unwrap();
 
     Ok((input, message))
 }
@@ -88,14 +95,14 @@ fn mode_s(timestamp: u32, signal_level: f64, input: &[u8]) -> Result<Message> {
         11 => parse_df_11(input),
         16 => parse_df_16(input),
         17 => parse_df_17(input),
-        _ => return Ok(Message::Unsupported(input.to_vec())),
+        _ => Data::Unsupported(input.to_vec()),
     };
 
-    Ok(Message::ModeS(ModeS {
+    Ok(Message {
         timestamp,
         signal_level,
         data,
-    }))
+    })
 }
 
 pub(crate) fn parse_df_0(input: &[u8]) -> Data {

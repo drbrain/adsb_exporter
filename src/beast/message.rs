@@ -232,13 +232,7 @@ pub enum HeadingSetting {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum Message {
-    ModeS(ModeS),
-    Unsupported(Vec<u8>),
-}
-
-#[derive(Debug, PartialEq)]
-pub struct ModeS {
+pub struct Message {
     pub timestamp: u32,
     pub signal_level: f64,
     pub data: Data,
