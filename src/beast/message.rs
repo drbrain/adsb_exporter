@@ -261,6 +261,7 @@ pub enum ReplyInformation {
     MaximumAirspeedUnder(u16),
     MaximumAirspeedBetween(u16, u16),
     MaximumAirspeedOver(u16),
+    Unsupported(u8),
 }
 
 #[derive(Debug, PartialEq)]

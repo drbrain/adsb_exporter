@@ -447,7 +447,7 @@ fn reply_information(ri: u8) -> ReplyInformation {
         12 => ReplyInformation::MaximumAirspeedBetween(300, 600),
         13 => ReplyInformation::MaximumAirspeedBetween(600, 1200),
         14 => ReplyInformation::MaximumAirspeedOver(1200),
-        _ => unreachable!("Impossible reply information {}", ri),
+        _ => ReplyInformation::Unsupported(ri),
     }
 }
 
