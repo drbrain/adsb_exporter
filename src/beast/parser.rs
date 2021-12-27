@@ -83,28 +83,30 @@ fn mode_s(timestamp: u32, signal_level: f64, input: &[u8]) -> Result<Message> {
     use nom::bits::bits;
     use nom::bits::complete::take;
 
-    let downlink_format: u8 =
-        bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(take(5usize))(input)
-            .unwrap()
-            .1;
+    map(
+        bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(take(5usize)),
+        |downlink_format: u8| {
+            debug!("DF={}", downlink_format);
 
-    debug!("DF={}", downlink_format);
+            let data = match downlink_format {
+                0 => parse_df_0(input),
+                4 => parse_df_4(input),
+                5 => parse_df_5(input),
+                11 => parse_df_11(input),
+                16 => parse_df_16(input),
+                17 => parse_df_17(input),
+                _ => Data::Unsupported(input.to_vec()),
+            };
 
-    let data = match downlink_format {
-        0 => parse_df_0(input),
-        4 => parse_df_4(input),
-        5 => parse_df_5(input),
-        11 => parse_df_11(input),
-        16 => parse_df_16(input),
-        17 => parse_df_17(input),
-        _ => Data::Unsupported(input.to_vec()),
-    };
-
-    Ok(Message {
-        timestamp,
-        signal_level,
-        data,
-    })
+            Ok(Message {
+                timestamp,
+                signal_level,
+                data,
+            })
+        },
+    )(input)
+    .unwrap()
+    .1
 }
 
 pub(crate) fn parse_df_0(input: &[u8]) -> Data {
