@@ -12,8 +12,6 @@ use nom::multi::*;
 use nom::sequence::*;
 use nom::IResult;
 
-type VE<'a> = VerboseError<&'a [u8]>;
-
 const MODE_AC_LENGTH: usize = 2;
 const MODE_S_SHORT_LENGTH: usize = 7;
 const MODE_S_LONG_LENGTH: usize = 14;
@@ -26,12 +24,12 @@ impl Parser {
         Parser {}
     }
 
-    pub fn parse<'a>(&'a self, input: &'a [u8]) -> IResult<&'a [u8], Message, VE> {
-        parse::<VE>(input)
+    pub fn parse<'a>(&'a self, input: &'a [u8]) -> IResult<&'a [u8], Message> {
+        parse(input)
     }
 }
 
-fn parse<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Message, E> {
+fn parse<'a>(input: &'a [u8]) -> IResult<&'a [u8], Message> {
     let (input, message_length) = map(
         many_till(
             take(1usize),
