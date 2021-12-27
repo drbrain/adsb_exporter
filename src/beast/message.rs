@@ -234,7 +234,7 @@ pub enum HeadingSetting {
 #[derive(Debug, PartialEq)]
 pub enum Message {
     ModeS(ModeS),
-    Unsupported(String),
+    Unsupported(Vec<u8>),
 }
 
 #[derive(Debug, PartialEq)]

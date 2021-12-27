@@ -62,10 +62,7 @@ fn parse<'a, E: ParseError<&'a [u8]>>(input: &'a [u8]) -> IResult<&'a [u8], Mess
     debug!("message: {:x?}", message);
 
     if message_length == MODE_AC_LENGTH {
-        return Ok((
-            input,
-            Message::Unsupported("Mode A/C not supported".to_string()),
-        ));
+        return Ok((input, Message::Unsupported(message.to_vec())));
     }
 
     let (_, message) = mode_s(timestamp, signal, message).unwrap();
@@ -91,7 +88,7 @@ fn mode_s(timestamp: u32, signal_level: f64, input: &[u8]) -> IResult<&[u8], Mes
         11 => parse_df_11(input),
         16 => parse_df_16(input),
         17 => parse_df_17(input),
-        _ => panic!("downlink format {} not supported", downlink_format),
+        _ => return Ok((input, Message::Unsupported(input.to_vec()))),
     };
 
     let mode_s = Message::ModeS(ModeS {
