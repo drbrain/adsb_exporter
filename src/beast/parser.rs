@@ -75,8 +75,10 @@ fn mode_s(timestamp: u32, signal_level: f64, input: &[u8]) -> IResult<&[u8], Mes
     use nom::bits::bits;
     use nom::bits::complete::take;
 
-    let (_, message_type): (_, u8) =
-        bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(take(5usize))(input).unwrap();
+    let message_type: u8 =
+        bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(take(5usize))(input)
+            .unwrap()
+            .1;
 
     let data = match message_type {
         0 => parse_df_0(input),
@@ -172,21 +174,25 @@ pub(crate) fn parse_df_17(input: &[u8]) -> Data {
     use nom::bits::bits;
     use nom::bits::complete::take;
 
-    let (_, message) = bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(map(
-        tuple((
-            preceded::<_, u8, _, _, _, _>(take(5usize), map(take(3usize), capability)),
-            map(take(24usize), address_announced),
-            map(take(56usize), message),
-        )),
-        |(capability, icao, message)| ExtendedSquitter {
-            capability,
-            icao,
-            message,
-        },
+    bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(preceded::<_, u8, _, _, _, _>(
+        take(5usize),
+        map(
+            tuple((
+                map(take(3usize), capability),
+                map(take(24usize), address_announced),
+                map(take(56usize), message),
+            )),
+            |(capability, icao, message)| {
+                Data::ExtendedSquitter(ExtendedSquitter {
+                    capability,
+                    icao,
+                    message,
+                })
+            },
+        ),
     ))(input)
-    .unwrap();
-
-    Data::ExtendedSquitter(message)
+    .unwrap()
+    .1
 }
 
 // AA
