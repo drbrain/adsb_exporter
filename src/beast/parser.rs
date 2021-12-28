@@ -28,27 +28,7 @@ impl Parser {
 }
 
 fn parse<'a>(input: &'a [u8]) -> IResult<&'a [u8], Message> {
-    let (input, (_, (message_length, timestamp, signal_level))) = many_till(
-        take(1usize),
-        tuple((
-            map(
-                preceded(tag(b"\x1a"), alt((tag(b"1"), tag(b"2"), tag(b"3")))),
-                |message_format: &[u8]| match message_format {
-                    b"1" => MODE_AC_LENGTH,
-                    b"2" => MODE_S_SHORT_LENGTH,
-                    b"3" => MODE_S_LONG_LENGTH,
-                    v => panic!("unknown BEAST message format: {:?}", v),
-                },
-            ),
-            map(take_while_m_n(6, 6, |_| true), |ts: &[u8]| {
-                ts.iter().fold(0u32, |ts, c| (ts << 8) | *c as u32)
-            }),
-            map(take(1usize), |signal: &[u8]| {
-                let signal = signal[0] as f64 / 255.0;
-                signal * signal
-            }),
-        )),
-    )(input)?;
+    let (input, (message_length, timestamp, signal_level)) = beast_header(input)?;
 
     let (input, message) = preceded(
         many0(tag("\x1a")),
@@ -74,6 +54,32 @@ fn parse<'a>(input: &'a [u8]) -> IResult<&'a [u8], Message> {
     )(input)?;
 
     Ok((input, message))
+}
+
+fn beast_header<'a>(input: &'a [u8]) -> IResult<&'a [u8], (usize, u32, f64)> {
+    let (input, (_, (message_length, timestamp, signal_level))) = many_till(
+        take(1usize),
+        tuple((
+            map(
+                preceded(tag(b"\x1a"), alt((tag(b"1"), tag(b"2"), tag(b"3")))),
+                |message_format: &[u8]| match message_format {
+                    b"1" => MODE_AC_LENGTH,
+                    b"2" => MODE_S_SHORT_LENGTH,
+                    b"3" => MODE_S_LONG_LENGTH,
+                    v => panic!("unknown BEAST message format: {:?}", v),
+                },
+            ),
+            map(take_while_m_n(6, 6, |_| true), |ts: &[u8]| {
+                ts.iter().fold(0u32, |ts, c| (ts << 8) | *c as u32)
+            }),
+            map(take(1usize), |signal: &[u8]| {
+                let signal = signal[0] as f64 / 255.0;
+                signal * signal
+            }),
+        )),
+    )(input)?;
+
+    Ok((input, (message_length, timestamp, signal_level)))
 }
 
 fn mode_s<'a>(timestamp: u32, signal_level: f64, input: &'a [u8]) -> IResult<&'a [u8], Message> {
