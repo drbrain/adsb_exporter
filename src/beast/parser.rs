@@ -50,26 +50,28 @@ fn parse<'a>(input: &'a [u8]) -> IResult<&'a [u8], Message> {
         )),
     )(input)?;
 
-    debug!("message_length: {}", message_length);
-    debug!("timestamp: {}", timestamp);
-    debug!("signal_level: {}", signal_level);
-
     let (input, message) = preceded(
         many0(tag("\x1a")),
-        take_while_m_n(message_length, message_length, |_| true),
+        map(
+            take_while_m_n(message_length, message_length, |_| true),
+            |message: &[u8]| {
+                debug!("message_length: {}", message_length);
+                debug!("message: {:x?}", message);
+                debug!("timestamp: {}", timestamp);
+                debug!("signal_level: {}", signal_level);
+
+                if message_length == MODE_AC_LENGTH {
+                    Message {
+                        timestamp,
+                        signal_level,
+                        data: Data::Unsupported(message.to_vec()),
+                    }
+                } else {
+                    mode_s(timestamp, signal_level, message).unwrap().1
+                }
+            },
+        ),
     )(input)?;
-
-    debug!("message: {:x?}", message);
-
-    let message = if message_length == MODE_AC_LENGTH {
-        Message {
-            timestamp,
-            signal_level,
-            data: Data::Unsupported(message.to_vec()),
-        }
-    } else {
-        mode_s(timestamp, signal_level, message).unwrap().1
-    };
 
     Ok((input, message))
 }
