@@ -23,40 +23,13 @@ impl Parser {
     }
 
     pub fn parse<'a>(&'a self, input: &'a [u8]) -> IResult<&'a [u8], Message> {
-        parse(input)
+        let (input, (message_length, timestamp, signal_level)) = parse_beast_header(input)?;
+
+        parse_message(message_length, timestamp, signal_level, input)
     }
 }
 
-fn parse<'a>(input: &'a [u8]) -> IResult<&'a [u8], Message> {
-    let (input, (message_length, timestamp, signal_level)) = beast_header(input)?;
-
-    let (input, message) = preceded(
-        many0(tag("\x1a")),
-        map(
-            take_while_m_n(message_length, message_length, |_| true),
-            |message: &[u8]| {
-                debug!("message_length: {}", message_length);
-                debug!("message: {:x?}", message);
-                debug!("timestamp: {}", timestamp);
-                debug!("signal_level: {}", signal_level);
-
-                if message_length == MODE_AC_LENGTH {
-                    Message {
-                        timestamp,
-                        signal_level,
-                        data: Data::Unsupported(message.to_vec()),
-                    }
-                } else {
-                    mode_s(timestamp, signal_level, message).unwrap().1
-                }
-            },
-        ),
-    )(input)?;
-
-    Ok((input, message))
-}
-
-fn beast_header<'a>(input: &'a [u8]) -> IResult<&'a [u8], (usize, u32, f64)> {
+fn parse_beast_header<'a>(input: &'a [u8]) -> IResult<&'a [u8], (usize, u32, f64)> {
     let (input, (_, (message_length, timestamp, signal_level))) = many_till(
         take(1usize),
         tuple((
@@ -82,7 +55,43 @@ fn beast_header<'a>(input: &'a [u8]) -> IResult<&'a [u8], (usize, u32, f64)> {
     Ok((input, (message_length, timestamp, signal_level)))
 }
 
-fn mode_s<'a>(timestamp: u32, signal_level: f64, input: &'a [u8]) -> IResult<&'a [u8], Message> {
+pub fn parse_message<'a>(
+    message_length: usize,
+    timestamp: u32,
+    signal_level: f64,
+    input: &'a [u8],
+) -> IResult<&'a [u8], Message> {
+    preceded(
+        many0(tag("\x1a")),
+        map(
+            take_while_m_n(message_length, message_length, |_| true),
+            |message: &[u8]| {
+                debug!("message_length: {}", message_length);
+                debug!("message: {:x?}", message);
+                debug!("timestamp: {}", timestamp);
+                debug!("signal_level: {}", signal_level);
+
+                if message_length == MODE_AC_LENGTH {
+                    Message {
+                        timestamp,
+                        signal_level,
+                        data: Data::Unsupported(message.to_vec()),
+                    }
+                } else {
+                    parse_downlink_format(timestamp, signal_level, message)
+                        .unwrap()
+                        .1
+                }
+            },
+        ),
+    )(input)
+}
+
+fn parse_downlink_format<'a>(
+    timestamp: u32,
+    signal_level: f64,
+    input: &'a [u8],
+) -> IResult<&'a [u8], Message> {
     use nom::bits::bits;
     use nom::bits::complete::take;
 
