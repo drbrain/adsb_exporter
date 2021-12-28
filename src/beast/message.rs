@@ -239,6 +239,7 @@ pub enum HeadingSetting {
 #[derive(Debug, PartialEq)]
 pub struct Message {
     pub timestamp: u32,
+    /// RSSI in dBFS
     pub signal_level: f64,
     pub data: Data,
 }

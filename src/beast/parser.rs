@@ -47,7 +47,7 @@ fn parse_beast_header<'a>(input: &'a [u8]) -> IResult<&'a [u8], (usize, u32, f64
             }),
             map(take(1usize), |signal: &[u8]| {
                 let signal = signal[0] as f64 / 255.0;
-                signal * signal
+                10.0 * (signal * signal).log10()
             }),
         )),
     )(input)?;
