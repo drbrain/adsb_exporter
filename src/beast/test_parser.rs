@@ -121,7 +121,7 @@ fn test_parse_df_16() {
         sensitivity_level: SensitivityLevel::Operative(4),
         reply_information: ReplyInformation::ACASVerticalOnly,
         altitude: Altitude::Feet(4500),
-        message: vec![88, 27, 199, 5, 53, 127, 253],
+        vds: 5774279,
     });
 
     assert_eq!(expected, data);

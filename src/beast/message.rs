@@ -8,7 +8,7 @@ pub struct ACASCoordinationReply {
     pub sensitivity_level: SensitivityLevel,
     pub reply_information: ReplyInformation,
     pub altitude: Altitude,
-    pub message: Vec<u8>,
+    pub vds: u32, // TODO, only 24 bits
 }
 
 #[derive(Debug, PartialEq)]
@@ -28,6 +28,11 @@ pub enum ADSBMessage {
     TargetState(TargetStateType),
     Velocity(Velocity),
     Unsupported(Vec<u8>),
+}
+
+#[derive(Debug, PartialEq)]
+pub enum ResolutionAdvisory {
+    None,
 }
 
 #[derive(Debug, PartialEq)]

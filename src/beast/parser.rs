@@ -63,27 +63,24 @@ pub fn parse_message<'a>(
 ) -> IResult<&'a [u8], Message> {
     preceded(
         many0(tag("\x1a")),
-        map(
-            take_while_m_n(message_length, message_length, |_| true),
-            |message: &[u8]| {
-                debug!("message_length: {}", message_length);
-                debug!("message: {:x?}", message);
-                debug!("timestamp: {}", timestamp);
-                debug!("signal_level: {}", signal_level);
+        map(take(message_length), |message: &[u8]| {
+            debug!("message_length: {}", message_length);
+            debug!("message: {:x?}", message);
+            debug!("timestamp: {}", timestamp);
+            debug!("signal_level: {}", signal_level);
 
-                if message_length == MODE_AC_LENGTH {
-                    Message {
-                        timestamp,
-                        signal_level,
-                        data: Data::Unsupported(message.to_vec()),
-                    }
-                } else {
-                    parse_downlink_format(timestamp, signal_level, message)
-                        .unwrap()
-                        .1
+            if message_length == MODE_AC_LENGTH {
+                Message {
+                    timestamp,
+                    signal_level,
+                    data: Data::Unsupported(message.to_vec()),
                 }
-            },
-        ),
+            } else {
+                parse_downlink_format(timestamp, signal_level, message)
+                    .unwrap()
+                    .1
+            }
+        }),
     )(input)
 }
 
@@ -233,17 +230,15 @@ pub(crate) fn parse_df_16(input: &[u8]) -> Data {
                 preceded::<_, u8, _, _, _, _>(take(2usize), map(take(3usize), sensitivity_level)),
                 preceded::<_, u8, _, _, _, _>(take(2usize), map(take(4usize), reply_information)),
                 preceded::<_, u8, _, _, _, _>(take(2usize), map(take(13usize), altitude_code)),
-                map(take(56usize), |message: u64| {
-                    message.to_be_bytes()[1..].to_vec()
-                }),
+                take(24usize),
             )),
-            |(vertical_status, sensitivity_level, reply_information, altitude, message)| {
+            |(vertical_status, sensitivity_level, reply_information, altitude, vds)| {
                 Data::ACASCoordinationReply(ACASCoordinationReply {
                     vertical_status,
                     sensitivity_level,
                     reply_information,
                     altitude,
-                    message,
+                    vds,
                 })
             },
         ),
