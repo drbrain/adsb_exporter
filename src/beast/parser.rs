@@ -61,18 +61,15 @@ fn parse<'a>(input: &'a [u8]) -> IResult<&'a [u8], Message> {
 
     debug!("message: {:x?}", message);
 
-    if message_length == MODE_AC_LENGTH {
-        return Ok((
-            input,
-            Message {
-                timestamp,
-                signal_level,
-                data: Data::Unsupported(message.to_vec()),
-            },
-        ));
-    }
-
-    let message = mode_s(timestamp, signal_level, message).unwrap().1;
+    let message = if message_length == MODE_AC_LENGTH {
+        Message {
+            timestamp,
+            signal_level,
+            data: Data::Unsupported(message.to_vec()),
+        }
+    } else {
+        mode_s(timestamp, signal_level, message).unwrap().1
+    };
 
     Ok((input, message))
 }
