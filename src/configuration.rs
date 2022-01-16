@@ -1,81 +1,51 @@
-use serde::Deserialize;
+use clap::Parser;
 
-use std::fs;
-use std::path::Path;
+use std::net::SocketAddr;
 use std::time::Duration;
 
-#[derive(Default, Deserialize)]
+/// A Prometheus exporter for ADSB message receivers like dump1090 and dump978
+#[derive(Parser)]
+#[clap(about, version)]
 pub struct Configuration {
-    bind_address: Option<String>,
-    dump1090_url: Option<String>,
-    dump978_url: Option<String>,
+    /// Bind address for prometheus exporter
+    #[clap(long, default_value = "0.0.0.0:9190")]
+    pub bind_address: SocketAddr,
 
-    aircraft_refresh_interval: Option<u64>,
-    receiver_refresh_interval: Option<u64>,
-    stats_refresh_interval: Option<u64>,
+    /// URL of the dump1090 server
+    #[clap(long)]
+    pub dump1090_url: Option<String>,
 
-    refresh_timeout: Option<u64>,
+    /// URL of the dump978 server
+    #[clap(long)]
+    pub dump978_url: Option<String>,
+
+    /// Refresh interval in seconds for aircraft.json
+    #[clap(long, default_value = "30", parse(try_from_str = secs_to_duration))]
+    pub aircraft_refresh_interval: Duration,
+
+    /// Refresh interval in seconds for receiver.json
+    #[clap(long, default_value = "300", parse(try_from_str = secs_to_duration))]
+    pub receiver_refresh_interval: Duration,
+
+    /// Refresh interval in seconds for stats.json
+    #[clap(long, default_value = "60", parse(try_from_str = secs_to_duration))]
+    pub stats_refresh_interval: Duration,
+
+    /// Refresh timeout in milliseconds for requests to dump program URLs
+    #[clap(long, default_value = "150", parse(try_from_str = millis_to_duration))]
+    pub refresh_timeout: Duration,
 }
 
-impl Configuration {
-    // Load a configuration file from `path`.
-    pub fn load<P: AsRef<Path>>(path: P) -> Self {
-        let source = fs::read_to_string(path).unwrap();
-
-        toml::from_str(&source).unwrap()
+fn millis_to_duration(s: &str) -> Result<Duration, &'static str> {
+    match s.parse::<u64>() {
+        Ok(secs) => Ok(Duration::from_millis(secs)),
+        Err(_) => Err("expected duration milliseconds"),
     }
+}
 
-    // Load configuration from the next argument in the environment.
-    pub fn load_from_next_arg() -> Self {
-        let file = match std::env::args().nth(1) {
-            None => {
-                return Configuration::default();
-            }
-            Some(f) => f,
-        };
-
-        Configuration::load(file)
-    }
-
-    // Bind address for Prometheus metric server
-    pub fn bind_address(&self) -> String {
-        self.bind_address
-            .as_ref()
-            .unwrap_or(&"0.0.0.0:9190".to_string())
-            .to_string()
-    }
-
-    pub fn dump1090_url(&self) -> Option<String> {
-        self.dump1090_url.clone()
-    }
-
-    pub fn dump978_url(&self) -> Option<String> {
-        self.dump978_url.clone()
-    }
-
-    // Timeout for HTTP requests of json sources.  Defaults to 150 milliseconds.
-    pub fn refresh_timeout(&self) -> Duration {
-        Duration::from_millis(self.refresh_timeout.unwrap_or(150))
-    }
-
-    // Interval between refreshes of aircraft.json.  Defaults to 30 seconds.
-    pub fn aircraft_refresh_interval(&self) -> Duration {
-        let interval = self.aircraft_refresh_interval.unwrap_or(30_000);
-
-        Duration::from_millis(interval)
-    }
-
-    // Interval between refreshes of receiver.json.  Defaults to 5 minutes.
-    pub fn receiver_refresh_interval(&self) -> Duration {
-        let interval = self.receiver_refresh_interval.unwrap_or(300_000);
-
-        Duration::from_millis(interval)
-    }
-
-    // Interval between refreshes of stats.json.  Defaults to 1 minute.
-    pub fn stats_refresh_interval(&self) -> Duration {
-        let interval = self.stats_refresh_interval.unwrap_or(60_000);
-
-        Duration::from_millis(interval)
+fn secs_to_duration(s: &str) -> Result<Duration, &'static str> {
+    match s.parse::<u64>() {
+        Ok(secs) => Ok(Duration::from_secs(secs)),
+        Err(_) => Err("expected duration seconds"),
     }
 }

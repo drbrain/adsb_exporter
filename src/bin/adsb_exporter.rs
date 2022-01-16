@@ -5,6 +5,10 @@ use adsb_exporter::DumpWatcher;
 use anyhow::anyhow;
 use anyhow::Result;
 
+use clap::ErrorKind;
+use clap::IntoApp;
+use clap::Parser;
+
 use env_logger::Builder;
 use env_logger::Env;
 
@@ -18,23 +22,32 @@ async fn main() -> Result<()> {
 
     Builder::from_env(Env::default().default_filter_or("info")).init();
 
-    let configuration = Configuration::load_from_next_arg();
+    let configuration = Configuration::parse();
 
-    if let Some(base_uri) = configuration.dump1090_url() {
-        DumpWatcher::new(&configuration, 1090, base_uri)
+    if configuration.dump1090_url.is_none() && configuration.dump978_url.is_none() {
+        let mut app = Configuration::into_app();
+        app.error(
+            ErrorKind::MissingRequiredArgument,
+            "You must provide at least one dump URL",
+        )
+        .exit();
+    }
+
+    if let Some(ref base_uri) = configuration.dump1090_url {
+        DumpWatcher::new(&configuration, 1090, base_uri.to_string())
             .start()
             .await;
     };
 
-    if let Some(base_uri) = configuration.dump978_url() {
-        DumpWatcher::new(&configuration, 978, base_uri)
+    if let Some(ref base_uri) = configuration.dump978_url {
+        DumpWatcher::new(&configuration, 978, base_uri.to_string())
             .start()
             .await;
     };
 
     let (error_tx, error_rx) = mpsc::channel(1);
 
-    ADSBExporter::new(configuration.bind_address())?
+    ADSBExporter::new(configuration.bind_address)?
         .start(error_tx.clone())
         .await;
 

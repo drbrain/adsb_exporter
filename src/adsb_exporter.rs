@@ -19,11 +19,7 @@ pub struct ADSBExporter {
 }
 
 impl ADSBExporter {
-    pub fn new(bind_address: String) -> Result<Self> {
-        let bind_address: SocketAddr = bind_address
-            .parse()
-            .with_context(|| format!("Can't parse listen address {}", bind_address))?;
-
+    pub fn new(bind_address: SocketAddr) -> Result<Self> {
         let shutdown = Arc::new(Notify::new());
 
         let exporter = ADSBExporter {

@@ -23,7 +23,7 @@ pub struct DumpWatcher {
 
 impl DumpWatcher {
     pub fn new(configuration: &Configuration, frequency: u32, base_uri: String) -> Self {
-        let timeout = configuration.refresh_timeout();
+        let timeout = configuration.refresh_timeout;
 
         let client = Client::builder()
             .connect_timeout(timeout)
@@ -32,9 +32,9 @@ impl DumpWatcher {
             .build()
             .expect("Could not build HTTP client");
 
-        let aircraft_interval = configuration.aircraft_refresh_interval();
-        let receiver_interval = configuration.receiver_refresh_interval();
-        let stats_interval = configuration.stats_refresh_interval();
+        let aircraft_interval = configuration.aircraft_refresh_interval;
+        let receiver_interval = configuration.receiver_refresh_interval;
+        let stats_interval = configuration.stats_refresh_interval;
 
         DumpWatcher {
             frequency,
