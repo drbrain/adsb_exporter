@@ -26,15 +26,21 @@ struct Args {
     /// * 192.0.2.1:30005
     #[clap(long)]
     pub server: Option<String>,
+
+    /// Enable console-subscriber
+    #[clap(long)]
+    pub enable_console_subscriber: bool,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    console_subscriber::init();
-
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     let args = Args::parse();
+
+    if args.enable_console_subscriber {
+        console_subscriber::init();
+    }
 
     if let Some(file) = args.file {
         read_file(file).await?
