@@ -34,6 +34,10 @@ pub struct Configuration {
     /// Refresh timeout in milliseconds for requests to dump program URLs
     #[clap(long, default_value = "150", parse(try_from_str = millis_to_duration))]
     pub refresh_timeout: Duration,
+
+    /// Enable console-subscriber for tokio-console
+    #[clap(long)]
+    pub enable_console_subscriber: bool,
 }
 
 fn millis_to_duration(s: &str) -> Result<Duration, &'static str> {

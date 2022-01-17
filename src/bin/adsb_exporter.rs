@@ -18,11 +18,13 @@ use tokio::sync::mpsc;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    console_subscriber::init();
-
     Builder::from_env(Env::default().default_filter_or("info")).init();
 
     let configuration = Configuration::parse();
+
+    if configuration.enable_console_subscriber {
+        console_subscriber::init();
+    }
 
     if configuration.dump1090_url.is_none() && configuration.dump978_url.is_none() {
         let mut app = Configuration::into_app();
