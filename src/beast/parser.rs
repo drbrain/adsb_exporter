@@ -23,19 +23,34 @@ impl Parser {
     }
 
     pub fn parse<'a>(&'a self, input: &'a [u8]) -> IResult<&'a [u8], Message> {
-        let (input, (message_length, timestamp, signal_level)) = parse_beast_header(input)?;
+        let (input, (message_length, timestamp, signal_level)) = beast_header(input)?;
 
         parse_message(message_length, timestamp, signal_level, input)
     }
 }
 
-fn parse_beast_header<'a>(input: &'a [u8]) -> IResult<&'a [u8], (usize, u64, f64)> {
-    let (input, (_, (message_length, timestamp, signal_level))) = many_till(
-        take(1usize),
-        tuple((header_message_size, header_timestamp, header_signal)),
-    )(input)?;
+pub fn unescape<'a>(length: usize) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], Vec<u8>> {
+    fold_many_m_n(
+        length,
+        length,
+        sep_or_not,
+        move || Vec::with_capacity(length),
+        |mut acc: Vec<_>, item| {
+            acc.push(item);
+            acc
+        },
+    )
+}
 
-    Ok((input, (message_length, timestamp, signal_level)))
+pub fn sep_or_not<'a>(input: &'a [u8]) -> IResult<&'a [u8], u8> {
+    alt((
+        value(0x1a, preceded(tag(b"\x1a"), tag(b"\x1a"))),
+        map(take(1usize), |c: &[u8]| c[0] as u8),
+    ))(input)
+}
+
+fn beast_header<'a>(input: &'a [u8]) -> IResult<&'a [u8], (usize, u64, f64)> {
+    tuple((header_message_size, header_timestamp, header_signal))(input)
 }
 
 pub fn header_message_size<'a>(input: &'a [u8]) -> IResult<&'a [u8], usize> {
@@ -51,14 +66,12 @@ pub fn header_message_size<'a>(input: &'a [u8]) -> IResult<&'a [u8], usize> {
 }
 
 pub fn header_timestamp<'a>(input: &'a [u8]) -> IResult<&'a [u8], u64> {
-    map(take_while_m_n(6, 6, |_| true), |ts: &[u8]| {
-        ts.iter().fold(0u64, |ts, c| (ts << 8) | *c as u64)
-    })(input)
+    fold_many_m_n(6, 6, sep_or_not, || 0, |ts, c| (ts << 8) | c as u64)(input)
 }
 
 pub fn header_signal<'a>(input: &'a [u8]) -> IResult<&'a [u8], f64> {
-    map(take(1usize), |signal: &[u8]| {
-        let signal = signal[0] as f64 / 255.0;
+    map(sep_or_not, |signal| {
+        let signal = signal as f64 / 255.0;
         10.0 * (signal * signal).log10()
     })(input)
 }
@@ -69,27 +82,24 @@ pub fn parse_message<'a>(
     signal_level: f64,
     input: &'a [u8],
 ) -> IResult<&'a [u8], Message> {
-    preceded(
-        many0(tag("\x1a")),
-        map(take(message_length), |message: &[u8]| {
-            debug!("message_length: {}", message_length);
-            debug!("message: {:x?}", message);
-            debug!("timestamp: {}", timestamp);
-            debug!("signal_level: {}", signal_level);
+    map(unescape(message_length), |message| {
+        debug!("message_length: {}", message_length);
+        debug!("message: {:x?}", message);
+        debug!("timestamp: {}", timestamp);
+        debug!("signal_level: {}", signal_level);
 
-            if message_length == MODE_AC_LENGTH {
-                Message {
-                    timestamp,
-                    signal_level,
-                    data: Data::Unsupported(message.to_vec()),
-                }
-            } else {
-                parse_downlink_format(timestamp, signal_level, message)
-                    .unwrap()
-                    .1
+        if message_length == MODE_AC_LENGTH {
+            Message {
+                timestamp,
+                signal_level,
+                data: Data::Unsupported(message.to_vec()),
             }
-        }),
-    )(input)
+        } else {
+            parse_downlink_format(timestamp, signal_level, &message)
+                .unwrap()
+                .1
+        }
+    })(input)
 }
 
 fn parse_downlink_format<'a>(

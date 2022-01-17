@@ -9,6 +9,23 @@ use crate::beast::*;
 // 00000050  1a 32 07 94 f8 91 25 44  14 02 c1 86 be 43 49 a6  |.2....%D.....CI.|
 
 #[test]
+fn test_unecape() {
+    let input = vec![0x07, 0x94, 0xf8, 0x8e, 0x22, 0x26];
+
+    let (input, unescaped) = unescape(6)(&input).unwrap();
+
+    assert_eq!(vec![0x07, 0x94, 0xf8, 0x8e, 0x22, 0x26,], unescaped);
+    assert_eq!(0, input.len());
+
+    let input = vec![0x07, 0x1a, 0x1a, 0xf8, 0x8e, 0x22, 0x26];
+
+    let (input, unescaped) = unescape(6)(&input).unwrap();
+
+    assert_eq!(vec![0x07, 0x1a, 0xf8, 0x8e, 0x22, 0x26,], unescaped);
+    assert_eq!(0, input.len());
+}
+
+#[test]
 fn test_parse_mode_s_short() {
     let input = vec![
         0x1a, 0x32, 0x07, 0x94, 0xf8, 0x8e, 0x22, 0x26, 0x04, 0x28, 0x00, 0x1b, 0x98, 0x03, 0x82,
@@ -44,15 +61,32 @@ fn test_header_timestamp() {
 
     assert_eq!(12497925324590, timestamp);
     assert_eq!(0, input.len());
+
+    let input = vec![0x0b, 0x1a, 0x1a, 0xe6, 0x66, 0x3f, 0x2e];
+
+    let (input, timestamp) = header_timestamp(&input).unwrap();
+
+    assert_eq!(12210162515758, timestamp);
+    assert_eq!(0, input.len());
 }
 
 #[test]
 fn test_header_signal() {
-    let input = vec![0x1e];
+    let input = vec![0x19, 0x1a, 0x1a, 0x1b];
 
     let (input, signal) = header_signal(&input).unwrap();
 
-    assert_eq!(-18.588378514285854, signal);
+    assert_eq!(-20.172003435238352, signal);
+    assert_eq!(3, input.len());
+
+    let (input, signal) = header_signal(&input).unwrap();
+
+    assert_eq!(-19.831336649262745, signal);
+    assert_eq!(1, input.len());
+
+    let (input, signal) = header_signal(&input).unwrap();
+
+    assert_eq!(-19.503528325499357, signal);
     assert_eq!(0, input.len());
 }
 
