@@ -1,5 +1,4 @@
 use crate::beast::*;
-
 use nom::branch::*;
 use nom::bytes::streaming::*;
 use nom::combinator::*;
@@ -91,9 +90,17 @@ pub fn parse_message<'a>(
                 data: Data::Unsupported(message.to_vec()),
             }
         } else {
-            parse_downlink_format(timestamp, signal_level, &message)
-                .unwrap()
-                .1
+            match parse_downlink_format(timestamp, signal_level, &message) {
+                Ok((_, m)) => m,
+                Err(e) => Message {
+                    timestamp,
+                    signal_level,
+                    data: Data::Error(BeastParseError {
+                        data: message.to_vec(),
+                        error: format!("{}", e),
+                    }),
+                },
+            }
         }
     })(input)
 }

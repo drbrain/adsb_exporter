@@ -163,6 +163,12 @@ pub enum BarometerSetting {
 }
 
 #[derive(Debug, PartialEq)]
+pub struct BeastParseError {
+    pub data: Vec<u8>,
+    pub error: String,
+}
+
+#[derive(Debug, PartialEq)]
 pub enum CPRFormat {
     Even,
     Odd,
@@ -184,6 +190,7 @@ pub enum Data {
     SurveillanceReply(SurveillanceReply),
     TargetState(TargetStateType),
     Unsupported(Vec<u8>),
+    Error(BeastParseError),
 }
 
 #[derive(Debug, PartialEq)]
