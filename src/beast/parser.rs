@@ -1,7 +1,5 @@
 use crate::beast::*;
 
-use log::debug;
-
 use nom::branch::*;
 use nom::bytes::streaming::*;
 use nom::combinator::*;
@@ -83,11 +81,6 @@ pub fn parse_message<'a>(
     input: &'a [u8],
 ) -> IResult<&'a [u8], Message> {
     map(unescape(message_length), |message| {
-        debug!("message_length: {}", message_length);
-        debug!("message: {:x?}", message);
-        debug!("timestamp: {}", timestamp);
-        debug!("signal_level: {}", signal_level);
-
         if message_length == MODE_AC_LENGTH {
             Message {
                 timestamp,
@@ -113,8 +106,6 @@ fn parse_downlink_format<'a>(
     map(
         bits::<_, _, Error<(&[u8], usize)>, Error<&[u8]>, _>(take(5usize)),
         |downlink_format: u8| {
-            debug!("DF={}", downlink_format);
-
             let data = match downlink_format {
                 0 => parse_df_0(input),
                 4 => parse_df_4(input),
