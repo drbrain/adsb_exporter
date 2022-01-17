@@ -75,9 +75,6 @@ pub struct AircraftStatus {
 
 impl AircraftStatus {
     pub fn new(sub_type: u8, emergency: u8, squawk: u16) -> AircraftStatus {
-        use log::debug;
-        debug!("sub_type: {} emergency: {}", sub_type, emergency);
-        eprintln!();
         let emergency = match sub_type {
             0 => Emergency::NoInformation,
             1 => match emergency {

@@ -32,7 +32,7 @@ async fn main() -> Result<()> {
     let mut reader = Framed::new(stream, Codec::new());
 
     while let Some(message) = reader.next().await {
-        eprintln!("{:#?}", message);
+        println!("{:#?}", message);
     }
 
     Ok(())
