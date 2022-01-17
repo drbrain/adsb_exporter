@@ -114,11 +114,7 @@ fn test_parse_df_4() {
     let data = parse_df_4(&input);
 
     let expected = Data::AltitudeReply(AltitudeReply {
-        flight_status: FlightStatus {
-            alert: false,
-            spi: false,
-            status: VerticalStatus::Airborne,
-        },
+        flight_status: FlightStatus::Airborne,
         downlink_request: 0,
         utility_message: 0,
         altitude: Altitude::Feet(4775),
@@ -134,11 +130,7 @@ fn test_parse_df_5() {
     let data = parse_df_5(&input);
 
     let expected = Data::SurveillanceReply(SurveillanceReply {
-        flight_status: FlightStatus {
-            alert: false,
-            spi: true,
-            status: VerticalStatus::Either,
-        },
+        flight_status: FlightStatus::SPI,
         downlink_request: 20,
         utility_message: 8,
         id: 12368,

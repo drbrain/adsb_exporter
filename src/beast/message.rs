@@ -212,10 +212,31 @@ pub struct ExtendedSquitter {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct FlightStatus {
-    pub alert: bool,
-    pub spi: bool,
-    pub status: VerticalStatus,
+pub enum FlightStatus {
+    Airborne,
+    OnGround,
+    AirborneAlert,
+    OnGroundAlert,
+    SPIAlert,
+    SPI,
+    Reserved,
+    Unassigned,
+}
+
+impl FlightStatus {
+    pub fn new(fs: u8) -> Self {
+        match fs {
+            0 => FlightStatus::Airborne,
+            1 => FlightStatus::OnGround,
+            2 => FlightStatus::AirborneAlert,
+            3 => FlightStatus::OnGroundAlert,
+            4 => FlightStatus::SPIAlert,
+            5 => FlightStatus::SPI,
+            6 => FlightStatus::Reserved,
+            7 => FlightStatus::Unassigned,
+            _ => unreachable!("Impossible flight status {}, only 3 bits allowed", fs)
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]

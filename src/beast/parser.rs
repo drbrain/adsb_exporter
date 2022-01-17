@@ -387,41 +387,7 @@ fn cross_link(cc: u8) -> CrossLink {
 
 // FS
 fn flight_status(fs: u8) -> FlightStatus {
-    match fs {
-        0 => FlightStatus {
-            alert: false,
-            spi: false,
-            status: VerticalStatus::Airborne,
-        },
-        1 => FlightStatus {
-            alert: false,
-            spi: false,
-            status: VerticalStatus::Ground,
-        },
-        2 => FlightStatus {
-            alert: true,
-            spi: false,
-            status: VerticalStatus::Airborne,
-        },
-        3 => FlightStatus {
-            alert: true,
-            spi: false,
-            status: VerticalStatus::Ground,
-        },
-        4 => FlightStatus {
-            alert: true,
-            spi: true,
-            status: VerticalStatus::Either,
-        },
-        5 => FlightStatus {
-            alert: false,
-            spi: true,
-            status: VerticalStatus::Either,
-        },
-        6 => unreachable!("FS=0b110 is reserved"),
-        7 => unreachable!("FS=0b111 is not assigned"),
-        _ => unreachable!("FS={} is larger than 3 bits", fs),
-    }
+    FlightStatus::new(fs)
 }
 
 // ID
