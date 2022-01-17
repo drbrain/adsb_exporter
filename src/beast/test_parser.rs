@@ -37,6 +37,26 @@ fn test_parse_mode_s_long() {
 }
 
 #[test]
+fn test_header_timestamp() {
+    let input = vec![0x0b, 0x5d, 0xe6, 0x66, 0x3f, 0x2e];
+
+    let (input, timestamp) = header_timestamp(&input).unwrap();
+
+    assert_eq!(12497925324590, timestamp);
+    assert_eq!(0, input.len());
+}
+
+#[test]
+fn test_header_signal() {
+    let input = vec![0x1e];
+
+    let (input, signal) = header_signal(&input).unwrap();
+
+    assert_eq!(-18.588378514285854, signal);
+    assert_eq!(0, input.len());
+}
+
+#[test]
 fn test_parse_df_0() {
     let input = vec![0x02, 0x81, 0x83, 0x16, 0xf9, 0x21, 0x89];
 

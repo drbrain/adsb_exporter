@@ -29,35 +29,43 @@ impl Parser {
     }
 }
 
-fn parse_beast_header<'a>(input: &'a [u8]) -> IResult<&'a [u8], (usize, u32, f64)> {
+fn parse_beast_header<'a>(input: &'a [u8]) -> IResult<&'a [u8], (usize, u64, f64)> {
     let (input, (_, (message_length, timestamp, signal_level))) = many_till(
         take(1usize),
-        tuple((
-            map(
-                preceded(tag(b"\x1a"), alt((tag(b"1"), tag(b"2"), tag(b"3")))),
-                |message_format: &[u8]| match message_format {
-                    b"1" => MODE_AC_LENGTH,
-                    b"2" => MODE_S_SHORT_LENGTH,
-                    b"3" => MODE_S_LONG_LENGTH,
-                    v => panic!("unknown BEAST message format: {:?}", v),
-                },
-            ),
-            map(take_while_m_n(6, 6, |_| true), |ts: &[u8]| {
-                ts.iter().fold(0u32, |ts, c| (ts << 8) | *c as u32)
-            }),
-            map(take(1usize), |signal: &[u8]| {
-                let signal = signal[0] as f64 / 255.0;
-                10.0 * (signal * signal).log10()
-            }),
-        )),
+        tuple((header_message_size, header_timestamp, header_signal)),
     )(input)?;
 
     Ok((input, (message_length, timestamp, signal_level)))
 }
 
+pub fn header_message_size<'a>(input: &'a [u8]) -> IResult<&'a [u8], usize> {
+    map(
+        preceded(tag(b"\x1a"), alt((tag(b"1"), tag(b"2"), tag(b"3")))),
+        |message_format: &[u8]| match message_format {
+            b"1" => MODE_AC_LENGTH,
+            b"2" => MODE_S_SHORT_LENGTH,
+            b"3" => MODE_S_LONG_LENGTH,
+            v => panic!("unknown BEAST message format: {:?}", v),
+        },
+    )(input)
+}
+
+pub fn header_timestamp<'a>(input: &'a [u8]) -> IResult<&'a [u8], u64> {
+    map(take_while_m_n(6, 6, |_| true), |ts: &[u8]| {
+        ts.iter().fold(0u64, |ts, c| (ts << 8) | *c as u64)
+    })(input)
+}
+
+pub fn header_signal<'a>(input: &'a [u8]) -> IResult<&'a [u8], f64> {
+    map(take(1usize), |signal: &[u8]| {
+        let signal = signal[0] as f64 / 255.0;
+        10.0 * (signal * signal).log10()
+    })(input)
+}
+
 pub fn parse_message<'a>(
     message_length: usize,
-    timestamp: u32,
+    timestamp: u64,
     signal_level: f64,
     input: &'a [u8],
 ) -> IResult<&'a [u8], Message> {
@@ -85,7 +93,7 @@ pub fn parse_message<'a>(
 }
 
 fn parse_downlink_format<'a>(
-    timestamp: u32,
+    timestamp: u64,
     signal_level: f64,
     input: &'a [u8],
 ) -> IResult<&'a [u8], Message> {
