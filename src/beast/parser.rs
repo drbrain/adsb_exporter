@@ -47,7 +47,7 @@ pub fn sep_or_not<'a>(input: &'a [u8]) -> IResult<&'a [u8], u8> {
     ))(input)
 }
 
-fn beast_header<'a>(input: &'a [u8]) -> IResult<&'a [u8], (usize, u64, f64)> {
+fn beast_header<'a>(input: &'a [u8]) -> IResult<&'a [u8], (usize, f64, f64)> {
     tuple((header_message_size, header_timestamp, header_signal))(input)
 }
 
@@ -63,8 +63,11 @@ pub fn header_message_size<'a>(input: &'a [u8]) -> IResult<&'a [u8], usize> {
     )(input)
 }
 
-pub fn header_timestamp<'a>(input: &'a [u8]) -> IResult<&'a [u8], u64> {
-    fold_many_m_n(6, 6, sep_or_not, || 0, |ts, c| (ts << 8) | c as u64)(input)
+pub fn header_timestamp<'a>(input: &'a [u8]) -> IResult<&'a [u8], f64> {
+    map(
+        fold_many_m_n(6, 6, sep_or_not, || 0, |ts, c| (ts << 8) | c as u64),
+        |ts| ts as f64 / 12.0,
+    )(input)
 }
 
 pub fn header_signal<'a>(input: &'a [u8]) -> IResult<&'a [u8], f64> {
@@ -76,7 +79,7 @@ pub fn header_signal<'a>(input: &'a [u8]) -> IResult<&'a [u8], f64> {
 
 pub fn parse_message<'a>(
     message_length: usize,
-    timestamp: u64,
+    timestamp: f64,
     signal_level: f64,
     input: &'a [u8],
 ) -> IResult<&'a [u8], Message> {
@@ -96,7 +99,7 @@ pub fn parse_message<'a>(
 }
 
 fn parse_downlink_format<'a>(
-    timestamp: u64,
+    timestamp: f64,
     signal_level: f64,
     input: &'a [u8],
 ) -> IResult<&'a [u8], Message> {

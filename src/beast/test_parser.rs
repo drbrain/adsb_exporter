@@ -59,14 +59,14 @@ fn test_header_timestamp() {
 
     let (input, timestamp) = header_timestamp(&input).unwrap();
 
-    assert_eq!(12497925324590, timestamp);
+    assert_eq!(1041493777049.1666, timestamp);
     assert_eq!(0, input.len());
 
     let input = vec![0x0b, 0x1a, 0x1a, 0xe6, 0x66, 0x3f, 0x2e];
 
     let (input, timestamp) = header_timestamp(&input).unwrap();
 
-    assert_eq!(12210162515758, timestamp);
+    assert_eq!(1017513542979.8334, timestamp);
     assert_eq!(0, input.len());
 }
 

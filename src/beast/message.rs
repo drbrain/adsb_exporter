@@ -235,7 +235,8 @@ pub enum HeadingSetting {
 
 #[derive(Debug, PartialEq)]
 pub struct Message {
-    pub timestamp: u64,
+    /// Timestamp the message arrived at the ADS-B receiver in µs since the dump process started
+    pub timestamp: f64,
     /// RSSI in dBFS
     pub signal_level: f64,
     pub data: Data,
