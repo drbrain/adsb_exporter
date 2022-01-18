@@ -91,6 +91,14 @@ fn test_header_signal() {
 }
 
 #[test]
+fn test_altitude_code() {
+    assert_eq!(Altitude::Feet(8900), altitude_code(1564));
+    assert_eq!(Altitude::Invalid, altitude_code(544));
+    assert_eq!(Altitude::Feet(14700), altitude_code(768));
+    assert_eq!(Altitude::Invalid, altitude_code(2592));
+}
+
+#[test]
 fn test_parse_df_0() {
     let input = vec![0x02, 0x81, 0x83, 0x16, 0xf9, 0x21, 0x89];
 

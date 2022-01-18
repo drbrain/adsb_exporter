@@ -296,9 +296,9 @@ fn address_announced(aa: u32) -> String {
     format!("{:X}", aa)
 }
 
-const ONES_PATTERN: [(u16, u16); 3] = [(0x10, 0x7), (0x20, 0x3), (0x40, 0x1)];
+const ONES_PATTERN: [(i32, i32); 3] = [(0x10, 0x7), (0x20, 0x3), (0x40, 0x1)];
 
-const FIVES_PATTERN: [(u16, u16); 8] = [
+const FIVES_PATTERN: [(i32, i32); 8] = [
     (0x0002, 0xff),
     (0x0004, 0x7f),
     (0x1000, 0x3f),
@@ -312,7 +312,7 @@ const FIVES_PATTERN: [(u16, u16); 8] = [
 const Q_BIT: u16 = 0x10;
 
 // AC
-fn altitude_code(ac: u16) -> Altitude {
+pub fn altitude_code(ac: u16) -> Altitude {
     if 0 == ac {
         return Altitude::Invalid;
     }
@@ -332,45 +332,42 @@ fn altitude_code(ac: u16) -> Altitude {
                     Altitude::Feet((feet * 25) - 1000)
                 }
                 false => {
-                    let mode_a = decode(ID_PATTERN, ac);
-                    let index = (mode_a & 0x7)
-                        | ((mode_a & 0x70) >> 1)
-                        | ((mode_a & 0x700) >> 2)
-                        | ((mode_a & 0x7000) >> 3);
+                    let mode_a: i32 = decode(ID_PATTERN, ac).into();
 
-                    match index {
-                        0..=4095 => {
-                            if (index & 0x8889) != 0 || (index & 0xf0) == 0 {
-                                return Altitude::Invalid;
+                    if (mode_a & 0x8889) != 0 || (mode_a & 0xf0) == 0 {
+                        return Altitude::Invalid;
+                    }
+
+                    let ones: i32 = ONES_PATTERN
+                        .iter()
+                        .map(|(in_bit, xor_bits)| {
+                            if *in_bit == mode_a & in_bit {
+                                *xor_bits
+                            } else {
+                                0
                             }
+                        })
+                        .fold(0, |acc, v| acc ^ v);
 
-                            let ones = ONES_PATTERN
-                                .iter()
-                                .map(|(in_bit, xor_bits)| {
-                                    if *in_bit == index & in_bit {
-                                        *xor_bits
-                                    } else {
-                                        0
-                                    }
-                                })
-                                .fold(0, |acc, v| acc ^ v);
+                    let fives: i32 = FIVES_PATTERN
+                        .iter()
+                        .map(|(in_bit, xor_bits)| {
+                            if *in_bit == mode_a & in_bit {
+                                *xor_bits
+                            } else {
+                                0
+                            }
+                        })
+                        .fold(0, |acc, v| acc ^ v);
 
-                            let fives = FIVES_PATTERN
-                                .iter()
-                                .map(|(in_bit, xor_bits)| {
-                                    if *in_bit == index & in_bit {
-                                        *xor_bits
-                                    } else {
-                                        0
-                                    }
-                                })
-                                .fold(0, |acc, v| acc ^ v);
+                    let ones = if fives & 1 == 1 { 6 - ones } else { ones };
 
-                            let ones = if fives & 1 == 1 { 6 - ones } else { ones };
+                    let raw: i32 = fives * 5 + ones - 13;
 
-                            Altitude::Feet((fives * 5 + ones - 13).into())
-                        }
-                        4096.. => Altitude::Invalid,
+                    if raw < -12 {
+                        Altitude::Invalid
+                    } else {
+                        Altitude::Feet(raw * 100)
                     }
                 }
             }
